@@ -6,6 +6,8 @@
 #elif defined(__linux__)
 
 #endif
+// ArrayFire Includes
+#include <arrayfire.h>
 
 #include <cstdint>
 #include <iostream>
@@ -15,8 +17,7 @@
 #include <libbladeRF.h>
 #include <bladeRF2.h>
 
-// ArrayFire Includes
-//#include <arrayfire.h>
+
 
 // Custom Includes
 #include "num2string.h"
@@ -118,7 +119,8 @@ int main(int argc, char** argv)
     }
 
 
-
+    af::setBackend(AF_BACKEND_CPU);
+    af::info();
 
 
     try{
@@ -159,19 +161,51 @@ int main(int argc, char** argv)
             return blade_status;
         }
 
-        // print out the samples
-        std::cout << std::endl;
-        for (idx = 0; idx < samples.size(); idx+=2)
+        // try to compute the fft using the arrayfire library
+        std::vector<std::complex<float>> c_samples(num_samples);
+        int index = 0;
+        for (idx = 0; idx < samples.size(); idx += 2)
         {
-            std::cout << samples[idx] << ", " << samples[idx + 1] << std::endl;
+            c_samples[index++] = std::complex<float>((float)samples[idx], (float)samples[idx+1]);
         }
+        
+        af::array data(num_samples, (af::cfloat *)c_samples.data());
+
+        af::fftInPlace(data, 1.0/(double)num_samples);
+
+        af::array data2 = 2*af::log10(af::shift(af::abs(data), num_samples > 1));
+
+        auto d2 = data2.host<float>();
+
+
+        af::Window myWindow(800, 800, "FFT example: ArrayFire");
+        af::array X = af::seq(0, num_samples-1, 1);
+
+
+        myWindow.plot(X, data2);
+
+        myWindow.show();
+
+        // print out the samples
+        //std::cout << std::endl;
+        //for (idx = 0; idx < samples.size(); idx+=2)
+        //{
+        //    std::cout << samples[idx] << ", " << samples[idx + 1] << std::endl;
+        //}
+        std::cin.ignore();
+
+        
 
         // disable the rx channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
 
         bladerf_close(dev);
     }
-    catch(std::exception e)
+    //catch(std::exception e)
+    //{
+    //    std::cout << "error: " << e.what() << std::endl;
+    //}
+    catch (af::exception e)
     {
         std::cout << "error: " << e.what() << std::endl;
     }
