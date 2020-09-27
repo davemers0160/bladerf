@@ -19,8 +19,8 @@
 
 cmake_minimum_required(VERSION 2.8.12)
 
-PROJECT(bladerf_example)
-set(exe_name "blade")
+PROJECT(bladerf_rx_example)
+set(exe_name "blade_rx")
 
 set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
 if("${PLATFORM}" STREQUAL "")

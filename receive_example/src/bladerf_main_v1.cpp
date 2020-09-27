@@ -165,8 +165,8 @@ int main(int argc, char** argv)
         af::Window myWindow(800, 800, "FFT example: ArrayFire");
         double freq_step = (sample_rate/1.0e6)/(double)num_samples;
 
-        float f_min = (rx_freq/1.0e6) - (sample_rate/2.0e6);
-        float f_max = (rx_freq / 1.0e6) + (sample_rate/2.0e6);
+        double f_min = (rx_freq/1.0e6) - (sample_rate/2.0e6);
+        double f_max = (rx_freq / 1.0e6) + (sample_rate/2.0e6);
 
         af::array X = af::seq(0, num_samples - 1, 1);
 
