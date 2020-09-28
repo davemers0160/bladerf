@@ -26,65 +26,66 @@
 #include "file_ops.h"
 
 // Project Includes
+#include <bladerf_common.h>
 
-// ----------------------------------------------------------------------------
-inline std::ostream& operator<< (
-    std::ostream& out,
-    const struct bladerf_devinfo &item
-    )
-{
-    out << "BladeRF Device Information: " << std::endl;
-    out << "  backend:       " << std::string(bladerf_backend_str(item.backend)) << std::endl;
-    out << "  serial number: " << std::string(item.serial) << std::endl;
-    out << "  usb_bus:       " << (uint32_t)item.usb_bus << std::endl;
-    out << "  usb_addr:      " << (uint32_t)item.usb_addr << std::endl;
-    out << "  instance:      " << item.instance << std::endl;
-    out << "  manufacturer:  " << std::string(item.manufacturer) << std::endl;
-    out << "  product:       " << std::string(item.product) << std::endl;
-    out << std::endl;
-    return out;
-}
-
-
-//-----------------------------------------------------------------------------
-int select_bladerf(int num_devices, struct bladerf_devinfo* device_list)
-{
-    uint32_t idx;
-    std::string console_input;
-
-    if (num_devices > 0)
-    {
-
-        for (idx = 0; idx < num_devices; ++idx)
-        {
-            std::cout << "BladeRF Device [" << idx << "]: " << std::string(device_list[idx].serial) << std::endl;
-            //std::cout << device_list[idx] << std::endl;
-        }
-        
-        std::cout << "Select BladeRF device number: ";
-        std::getline(std::cin, console_input);
-        return std::stoi(console_input);
-    }
-    else
-    {
-        std::cout << "Could not detect any bladeRF devices.  Check connections and try again..." << std::endl;
-    }
-
-    return -1;
-
-}   // end of get_device_list
-
-// ----------------------------------------------------------------------------
-void bladerf_status(int status)
-{
-    if (status != 0)
-    {
-        std::cout << "Unable to open device: " << std::string(bladerf_strerror(status)) << std::endl;
-        exit(status);
-    }
-    //return status;
-
-}
+//// ----------------------------------------------------------------------------
+//inline std::ostream& operator<< (
+//    std::ostream& out,
+//    const struct bladerf_devinfo &item
+//    )
+//{
+//    out << "BladeRF Device Information: " << std::endl;
+//    out << "  backend:       " << std::string(bladerf_backend_str(item.backend)) << std::endl;
+//    out << "  serial number: " << std::string(item.serial) << std::endl;
+//    out << "  usb_bus:       " << (uint32_t)item.usb_bus << std::endl;
+//    out << "  usb_addr:      " << (uint32_t)item.usb_addr << std::endl;
+//    out << "  instance:      " << item.instance << std::endl;
+//    out << "  manufacturer:  " << std::string(item.manufacturer) << std::endl;
+//    out << "  product:       " << std::string(item.product) << std::endl;
+//    out << std::endl;
+//    return out;
+//}
+//
+//
+////-----------------------------------------------------------------------------
+//int select_bladerf(int num_devices, struct bladerf_devinfo* device_list)
+//{
+//    uint32_t idx;
+//    std::string console_input;
+//
+//    if (num_devices > 0)
+//    {
+//
+//        for (idx = 0; idx < num_devices; ++idx)
+//        {
+//            std::cout << "BladeRF Device [" << idx << "]: " << std::string(device_list[idx].serial) << std::endl;
+//            //std::cout << device_list[idx] << std::endl;
+//        }
+//        
+//        std::cout << "Select BladeRF device number: ";
+//        std::getline(std::cin, console_input);
+//        return std::stoi(console_input);
+//    }
+//    else
+//    {
+//        std::cout << "Could not detect any bladeRF devices.  Check connections and try again..." << std::endl;
+//    }
+//
+//    return -1;
+//
+//}   // end of get_device_list
+//
+//// ----------------------------------------------------------------------------
+//void bladerf_status(int status)
+//{
+//    if (status != 0)
+//    {
+//        std::cout << "Unable to open device: " << std::string(bladerf_strerror(status)) << std::endl;
+//        exit(status);
+//    }
+//    //return status;
+//
+//}
 
 // ----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -106,7 +107,7 @@ int main(int argc, char** argv)
     bladerf_gain rx1_gain = 10;
 
     std::vector<int16_t> samples;
-    uint32_t num_samples = 131072;
+    uint32_t num_samples = 65536;
     uint32_t timeout_ms = 10000;
 
     int num_devices = bladerf_get_device_list(&device_list);
@@ -121,12 +122,12 @@ int main(int argc, char** argv)
 
     std::cout << std::endl;
 
-    af::setBackend(AF_BACKEND_CPU);
-    af::info();
-
-    std::cout << std::endl;
-
     try{
+
+        af::setBackend(AF_BACKEND_CPU);
+        af::info();
+
+        std::cout << std::endl;
         
         blade_status = bladerf_open(&dev, ("*:serial=" +  std::string(device_list[bladerf_num].serial)).c_str());
         if (blade_status != 0)

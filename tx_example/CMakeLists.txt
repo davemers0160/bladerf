@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-#  Root CMake file for the bladeRF example
+#  Root CMake file for the bladeRF transmit example
 # ----------------------------------------------------------------------------
 #
 # To perform an out of source build do the following on the command line:
@@ -19,8 +19,8 @@
 
 cmake_minimum_required(VERSION 2.8.12)
 
-PROJECT(bladerf_rx_example)
-set(exe_name "blade_rx")
+PROJECT(bladerf_tx_example)
+set(exe_name "blade_tx")
 
 set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
 if("${PLATFORM}" STREQUAL "")
@@ -29,6 +29,9 @@ if("${PLATFORM}" STREQUAL "")
 endif()
 message("Platform: " ${PLATFORM})
 
+# find the root of the main project
+string(FIND ${PROJECT_SOURCE_DIR} "/" INDEX REVERSE)
+string(SUBSTRING ${PROJECT_SOURCE_DIR} 0 ${INDEX} PR_ROOT)
 
 if(WIN32)
 
@@ -65,6 +68,7 @@ file(GLOB SOURCES "src/*.c*"
 
 set(project_includes 
     "include" 
+    "${PR_ROOT}/common/include"
     "${COMMON_ROOT}/include"
     )
 
