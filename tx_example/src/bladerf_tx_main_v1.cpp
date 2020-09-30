@@ -7,17 +7,17 @@
 
 #endif
 // ArrayFire Includes
-#include <arrayfire.h>
+//#include <arrayfire.h>
 
 #include <cstdint>
 #include <iostream>
 #include <sstream>
+#include <complex>
+#include <cmath>
 
 // bladeRF includes
 #include <libbladeRF.h>
 #include <bladeRF2.h>
-
-
 
 // Custom Includes
 #include "num2string.h"
@@ -28,13 +28,14 @@
 // Project Includes
 #include <bladerf_common.h>
 
-
+const double pi = 3.14159265358979323846;
+const double pi2 = 3.14159265358979323846*2;
 
 // ----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
 
-    uint32_t idx;
+    uint32_t idx, jdx;
     
     // bladeRF variable
     struct bladerf_devinfo *device_list = NULL;
@@ -42,17 +43,75 @@ int main(int argc, char** argv)
     struct bladerf* dev;
     int bladerf_num;
     int blade_status;
+    bladerf_sample_rate sample_rate = 10000000;     // 10 MHz
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 314300000;
-    bladerf_sample_rate sample_rate = 2000000;
-    bladerf_bandwidth rx_bw = 5000000;
-    bladerf_gain rx1_gain = 10;
+    bladerf_frequency tx_freq = 314300000;
+    bladerf_bandwidth tx_bw = 5000000;
+    bladerf_gain tx1_gain = 10;
 
     std::vector<int16_t> samples;
     uint32_t num_samples = 131072;
+    const uint32_t num_buffers = 16;
+    const uint32_t buffer_size = 1024*8;        // must be a multiple of 1024
+    const uint32_t num_transfers = 8;
     uint32_t timeout_ms = 10000;
 
+    std::vector<uint8_t> data;
+    std::vector<int16_t> iq_data;
+
+    std::string message = "Hello!";
+
+    // generate the data that will be transmitted
+    for (idx = 0; idx < 19; ++idx)
+    {
+        data.push_back(1);
+    }
+    data.push_back(0);
+
+    for (idx = 0; idx < message.length(); ++idx)
+    {
+        for (jdx = 0; jdx < 8; ++jdx)
+        {
+            data.push_back((message[idx] >> (8 - jdx)) & 0x01);
+        }
+
+    }
+        
+    // ----------------------------------------------------------------------------
+    // create the bits in RF
+    // the number of samples per bit
+    uint32_t bit_samples = 10000;
+
+    // the frequency offset for the FSK modulation - 200kHz
+    double freq_offset = 200000;
+
+    // vectors to store the IQ representation of a 0 and a 1
+    std::vector<int16_t> IQ_1, IQ_0;
+
+    // generate the samples - consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
+    for (idx = 0; idx < bit_samples; ++idx)
+    {
+        IQ_1.push_back((int16_t)(1200 * (cos((2 * pi * freq_offset * idx) / (double)sample_rate))));
+        IQ_1.push_back((int16_t)(1200 * (sin((2 * pi * freq_offset * idx) / (double)sample_rate))));
+        IQ_0.push_back((int16_t)(1200 * (cos((2 * pi * -freq_offset * idx) / (double)sample_rate))));
+        IQ_0.push_back((int16_t)(1200 * (sin((2 * pi * -freq_offset * idx) / (double)sample_rate))));
+    }
+
+    // run through each data bit and map the bit_samples of IQ data
+    for (idx = 0; idx < data.size(); ++idx)
+    {
+        if (data[idx] == 1)
+        {
+            iq_data.insert(iq_data.end(), IQ_1.begin(), IQ_1.end());
+        }
+        else
+        {
+            iq_data.insert(iq_data.end(), IQ_0.begin(), IQ_0.end());
+        }
+    }
+
+    // ----------------------------------------------------------------------------
     int num_devices = bladerf_get_device_list(&device_list);
 
     bladerf_num = select_bladerf(num_devices, device_list);
@@ -66,9 +125,6 @@ int main(int argc, char** argv)
     std::cout << std::endl;
 
     try{
-        
-        af::setBackend(AF_BACKEND_CPU);
-        af::info();
 
         std::cout << std::endl;
         
@@ -88,96 +144,55 @@ int main(int argc, char** argv)
         std::cout << std::endl << dev_info << std::endl;
 
         // set the frequency, sample_rate and bandwidth
-        blade_status = bladerf_set_frequency(dev, rx, rx_freq);
-        blade_status = bladerf_set_sample_rate(dev, rx, sample_rate, &sample_rate);
-        blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
+        blade_status = bladerf_set_frequency(dev, tx, tx_freq);
+        blade_status = bladerf_set_sample_rate(dev, tx, sample_rate, &sample_rate);
+        blade_status = bladerf_set_bandwidth(dev, tx, tx_bw, &tx_bw);
 
         // the gain 
-        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
-        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
+        blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MANUAL);
+        blade_status = bladerf_set_gain(dev, tx, tx1_gain);
 
         // configure the sync to receive/transmit data
-        blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, 10, 4096, 8, timeout_ms);
+        blade_status = bladerf_sync_config(dev, BLADERF_TX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
+        
+        if (blade_status != 0) 
+        {
+            std::cout << "Failed to configure TX sync interface: " << bladerf_strerror(blade_status) << std::endl;
+        }
 
         // enable the rx channel RF frontend
-        blade_status = bladerf_enable_module(dev, BLADERF_RX, true);
+        blade_status = bladerf_enable_module(dev, BLADERF_TX, true);
 
-        // receive the samples 
-        // the x2 is because one sample consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
-        samples.resize(num_samples*2);
 
-        af::Window myWindow(800, 800, "FFT example: ArrayFire");
-        double freq_step = (sample_rate/1.0e6)/(double)num_samples;
 
-        double f_min = (rx_freq/1.0e6) - (sample_rate/2.0e6);
-        double f_max = (rx_freq / 1.0e6) + (sample_rate/2.0e6);
 
-        af::array X = af::seq(0, num_samples - 1, 1);
+        // generate the samples - consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
 
-        af::array f = af::seq(f_min, f_max - freq_step, freq_step);
-        af::array p = af::seq(-120, 20, 10);
-        auto p2 = p.dims(0);
-        auto f2 = f.dims(0);
 
-        myWindow.setAxesLimits(f, p, true);
-        myWindow.setAxesTitles("Frequency (MHz)", "Power (dBm)");
-
-        af::array raw_data, fft_data;
-
-        double scale = 1.0 / (double)(num_samples*50);
-
-        while (!myWindow.close())
+        while (1)
         {
-            blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
+            blade_status = bladerf_sync_tx(dev, (void*)iq_data.data(), iq_data.size(), NULL, timeout_ms);
+
             if (blade_status != 0)
             {
                 std::cout << "Unable to get the required number of samples: " << std::string(bladerf_strerror(blade_status)) << std::endl;
                 return blade_status;
             }
 
-            // try to compute the fft using the arrayfire library
-            std::vector<std::complex<float>> c_samples(num_samples);
-            int index = 0;
-            for (idx = 0; idx < samples.size(); idx += 2)
-            {
-                c_samples[index++] = std::complex<float>((float)samples[idx], (float)samples[idx + 1]);
-            }
 
-            raw_data = af::array(num_samples, (af::cfloat*)c_samples.data());
-            //auto d1 = data.host<af::cfloat>();
 
-            af::fftInPlace(raw_data, scale);
 
-            fft_data = 20 * af::log10(af::shift(af::abs(raw_data), (num_samples >> 1)))-40;
-
-            //auto d2 = data2.host<float>();
-
-            // show the results of the FFT in the window
-            myWindow.plot(f, fft_data);
-            myWindow.show();
 
         }
 
-        // print out the samples
-        //std::cout << std::endl;
-        //for (idx = 0; idx < samples.size(); idx+=2)
-        //{
-        //    std::cout << samples[idx] << ", " << samples[idx + 1] << std::endl;
-        //}
-        //std::cin.ignore();
 
-        
 
         // disable the rx channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
 
         bladerf_close(dev);
     }
-    //catch(std::exception e)
-    //{
-    //    std::cout << "error: " << e.what() << std::endl;
-    //}
-    catch (af::exception e)
+    catch (std::exception e)
     {
         std::cout << "error: " << e.what() << std::endl;
         std::cin.ignore();
