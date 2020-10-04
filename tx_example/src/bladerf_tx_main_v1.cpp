@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     bladerf_gain tx1_gain = 10;
 
     std::vector<int16_t> samples;
-    uint32_t num_samples = 131072;
+    uint64_t num_samples;
     const uint32_t num_buffers = 16;
     const uint32_t buffer_size = 1024*8;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
@@ -111,6 +111,9 @@ int main(int argc, char** argv)
         }
     }
 
+    // the number of IQ samples is the number of samples divided by 2
+    num_samples = iq_data.size() >> 1;
+
     // ----------------------------------------------------------------------------
     int num_devices = bladerf_get_device_list(&device_list);
 
@@ -149,8 +152,8 @@ int main(int argc, char** argv)
         blade_status = bladerf_set_bandwidth(dev, tx, tx_bw, &tx_bw);
 
         // the gain 
-        blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MANUAL);
-        blade_status = bladerf_set_gain(dev, tx, tx1_gain);
+        //blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MANUAL);
+        //blade_status = bladerf_set_gain(dev, tx, tx1_gain);
 
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_TX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
@@ -160,18 +163,12 @@ int main(int argc, char** argv)
             std::cout << "Failed to configure TX sync interface: " << bladerf_strerror(blade_status) << std::endl;
         }
 
-        // enable the rx channel RF frontend
+        // enable the TX channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_TX, true);
-
-
-
-
-        // generate the samples - consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
-
 
         while (1)
         {
-            blade_status = bladerf_sync_tx(dev, (void*)iq_data.data(), iq_data.size(), NULL, timeout_ms);
+            blade_status = bladerf_sync_tx(dev, (int16_t*)iq_data.data(), num_samples, NULL, timeout_ms);
 
             if (blade_status != 0)
             {
