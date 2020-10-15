@@ -185,6 +185,10 @@ int main(int argc, char** argv)
         blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
 
         bladerf_close(dev);
+
+        std::cout << "Press Enter to close..." << std::endl;
+
+        std::cin.ignore();
     }
     catch (std::exception e)
     {
