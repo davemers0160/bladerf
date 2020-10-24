@@ -28,26 +28,6 @@
 // Project Includes
 #include <bladerf_common.h>
 
-//// ----------------------------------------------------------------------------
-//inline std::ostream& operator<< (
-//    std::ostream& out,
-//    const struct bladerf_devinfo &item
-//    )
-//{
-//    out << "BladeRF Device Information: " << std::endl;
-//    out << "  backend:       " << std::string(bladerf_backend_str(item.backend)) << std::endl;
-//    out << "  serial number: " << std::string(item.serial) << std::endl;
-//    out << "  usb_bus:       " << (uint32_t)item.usb_bus << std::endl;
-//    out << "  usb_addr:      " << (uint32_t)item.usb_addr << std::endl;
-//    out << "  instance:      " << item.instance << std::endl;
-//    out << "  manufacturer:  " << std::string(item.manufacturer) << std::endl;
-//    out << "  product:       " << std::string(item.product) << std::endl;
-//    out << std::endl;
-//    return out;
-//}
-//
-//
-
 // ----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
