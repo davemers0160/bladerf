@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
         idx = 0;
 
-        while (idx<1e3)
+        while (idx<100)
         {
             blade_status = bladerf_sync_tx(dev, (int16_t*)iq_data.data(), num_samples, NULL, timeout_ms);
 
@@ -177,12 +177,15 @@ int main(int argc, char** argv)
                 std::cout << "Unable to get the required number of samples: " << std::string(bladerf_strerror(blade_status)) << std::endl;
                 return blade_status;
             }
+
+            std::cout << "Sending signal #" << idx << std::endl;
             ++idx;
         }
 
+        std::cout << "Done sending signals.  Closing BladeRF..." << std::endl;
 
         // disable the rx channel RF frontend
-        blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
+        blade_status = bladerf_enable_module(dev, BLADERF_TX, false);
 
         bladerf_close(dev);
 
