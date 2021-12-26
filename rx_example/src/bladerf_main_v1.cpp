@@ -42,17 +42,17 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 314300000;
-    bladerf_sample_rate sample_rate = 5000000;
-    bladerf_bandwidth rx_bw = 1000000;
-    bladerf_gain rx1_gain = 10;
-    int64_t span = 1000000;
+    bladerf_frequency rx_freq = 96600000; //162425000;
+    bladerf_sample_rate sample_rate = 1000000;
+    bladerf_bandwidth rx_bw = 500000;
+    bladerf_gain rx1_gain = 16;
+    int64_t span = 500000;
 
     std::vector<int16_t> samples;
     uint32_t num_samples = 65536*2;
     uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
-    const uint32_t buffer_size = 1024 * 8;        // must be a multiple of 1024
+    const uint32_t buffer_size = 1024 * 4 * 8;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
 
 #ifdef USE_ARRAYFIRE
