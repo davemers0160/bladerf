@@ -39,10 +39,10 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 162400000;
+    bladerf_frequency rx_freq = 96600000; //162400000;
     bladerf_sample_rate sample_rate = 1000000;
     bladerf_bandwidth rx_bw = 1000000;
-    bladerf_gain rx1_gain = 32;
+    bladerf_gain rx1_gain = 48;
     //int64_t span = 1000000;
     double t = 10;         // number of seconds to record
 
