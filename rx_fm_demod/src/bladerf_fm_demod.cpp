@@ -52,40 +52,6 @@ inline std::complex<T> complex_cast(const std::complex<U>& c) {
 }
 
 //-----------------------------------------------------------------------------
-//std::vector<float> blackman_window(uint64_t N)
-//{
-//    std::vector<float> w(N, 0);
-//
-//    for (uint64_t idx = 0; idx < N; ++idx)
-//    {
-//        w[idx] = 0.42 - 0.5 * std::cos(2* M_PI * idx / (double)(N - 1)) + 0.08 * std::cos(4 * M_PI * idx / (double)(N - 1));
-//    }
-//
-//    return w;
-//}   // end of blackman_window
-
-//-----------------------------------------------------------------------------
-std::vector<float> blackman_fir(uint64_t N, float fc)
-{
-    std::vector<float> g(N, 0);
-
-    std::vector<float> w = DSP::blackman_window(N);
-
-    for (uint64_t idx = 0; idx < N; ++idx)
-    {
-        if (abs((double)idx -  (N / 2.0)) < 1e-6)
-            g[idx] = w[idx] * fc;
-        else
-            g[idx] = w[idx] * (std::sin(M_PI * fc * (idx - N / 2.0)) / (M_PI * (idx - N / 2.0)));
-    }
-
-    return g;
-
-}   // end of blackman_fir
-
-
-
-//-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
 
@@ -99,18 +65,17 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq;  // 96600000; //162400000;
+    bladerf_frequency rx_freq;
     bladerf_sample_rate fs;
     bladerf_bandwidth rx_bw;
     bladerf_gain rx1_gain = 50;
     int64_t span = 100000;
 
-    int64_t f_offset;
-    int64_t channel_bw; // 200000; //25000;
-    uint64_t n_taps;
-    int64_t audio_freq;
+    int64_t f_offset;           // offset from the tuned frequency (Hz)
+    int64_t channel_bw;         // bandwidth of the signal (Hz)
+    uint64_t n_taps;            // number of taps used in the first FIR filter
+    int64_t audio_freq;         // optimal audio frequency sample rate
 
-    //std::vector<int16_t> samples;
     uint32_t num_samples = 65536*2;
     uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
@@ -118,9 +83,8 @@ int main(int argc, char** argv)
     const uint32_t num_transfers = 8;
     const float scale = (1.0 / 2048.0);
     std::vector<std::complex<int16_t>> samples(num_samples);
-    //std::vector<int16_t> samples(num_samples * 2);
 
-    std::string filename = "../../rx_record/recordings/096M600_1M__10s_test.bin"; 
+    //std::string filename = "../../rx_record/recordings/096M600_1M__10s_test.bin"; 
     //std::ifstream input_data(filename, std::ios::binary);
 
     uint8_t test_case = 1;
@@ -163,7 +127,6 @@ int main(int argc, char** argv)
     af::array x2, x3, x4, x5, x6, x7, x8;
 
 #endif // USE_ARRAYFIRE
-
 
     //input_data.seekg(0, std::ios::end);
     //size_t filesize = input_data.tellg();
@@ -218,8 +181,7 @@ int main(int argc, char** argv)
 
         // enable the rx channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_RX, true);
-
-        
+       
         // decimation rate
         int64_t dec_rate = (int64_t)(fs / (float)channel_bw);
 
@@ -244,8 +206,6 @@ int main(int argc, char** argv)
         // audio decimation sequence
         af::array seq_audio = af::seq(0, dec_seq.dims(0), dec_audio);
 
-        //af::array audio_filter = af::constant(0.25f, 4); // af::array(2, { 0.5f, 0.5f });
-
         std::vector<float> lpf_de = DSP::create_fir_filter(64, 1.0/(float)(fs_d * 75e-6), &DSP::rectangular_window);
         af::array af_lpf_de = af::array(lpf_de.size(), (float*)lpf_de.data());
 
@@ -253,17 +213,10 @@ int main(int argc, char** argv)
         af::array af_lpf_a = af::array(lpf_a.size(), (float*)lpf_a.data());
 
         // A*exp(j*3*pi*t) = A*cos(3*pi*t) + j*sin(3*pi*t)
-
-        //af::array test = af::range(af::dim4(num_samples));
-        //af::array af_lpf = af::exp(-2.0 * j * pi * (f_offset / (double)sample_rate) * test);
-
-        //af::array af_rot = af::complex(af::cos(-2.0 * pi * (f_offset / (double)fs) * test), af::sin(-2.0 * pi * (f_offset / (double)fs) * test));
-
         // generate the frequency rotation vector to center the offset frequency 
         std::vector<std::complex<float>> fc_rot(num_samples, 0);
         for (idx = 0; idx < num_samples; ++idx)
         {
-            //fc_rot[idx] = std::complex<float>(cos(-2.0 * pi * (f_offset / (double)sample_rate) * idx), sin(-2.0 * pi * (f_offset / (double)sample_rate) * idx));
             fc_rot[idx] = std::exp(-2.0 * 1i * M_PI * (f_offset / (double)fs) * (double)idx);
         }
 
@@ -277,16 +230,8 @@ int main(int argc, char** argv)
 
         double fft_scale = 1.0 / (double)(num_samples);
 
-        // try to compute the fft using the arrayfire library
         std::vector<std::complex<float>> cf_samples(num_samples);
         std::complex<float> cf_scale(scale, 0.0f);
-
-        //int index = 0;
-        //for (idx = 0; idx < num_samples*2; idx+=2)
-        //{
-        //    cf_samples[index] = std::complex<float>((float)buffer[idx]*scale, (float)buffer[idx + 1]*scale) * fc_rot[index];
-        //    ++index;
-        //}
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
 
@@ -310,14 +255,10 @@ int main(int argc, char** argv)
         std::cout << "fs_audio:   " << fs_audio << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
-
-
 #ifdef USE_ARRAYFIRE
 
         af::Window myWindow(800, 800, "FFT example: ArrayFire");
-        //af::array X = af::seq(0, num_samples - 1, 1);
         af::array X = af::seq(sp+1, (sp+sp2), 1);
-        //auto x2d = X.dims(0);
 
         af::array f = af::seq(f_min, f_max - (freq_step*1.0e-6), (freq_step*1.0e-6));
 
@@ -342,80 +283,48 @@ int main(int argc, char** argv)
                 return blade_status;
             }
 
-            //index = 0;
             // convert from complex int16 to complex floats, scale and frequency shift
             for (idx = 0; idx < num_samples; ++idx)
-            //for (idx = 0; idx < samples.size(); idx += 2)
             {
                 cf_samples[idx] = complex_cast<float>(samples[idx]) * fc_rot[idx] * cf_scale;
-                //cf_samples[index] = std::complex<float>((float)samples[idx] * fc_rot[index].real() * scale, (float)samples[idx + 1] * fc_rot[index].imag() * scale);
-
-                //++index;
             }
             
 #ifdef USE_ARRAYFIRE
             // take the complex float vector data and put it into an af::array container 
             x2 = af::array(num_samples, (af::cfloat*)cf_samples.data());
 
-            auto x2_host = x2.host<af::cfloat>();
-
-
             // apply low pass filter to the rotated signal 
             x3 = af::fir(af_lpf, x2);
 
-            //x3 = af::fir(af_lpf, x3);
-
-            auto x3_host = x3.host<af::cfloat>();
-
             // decimate the signal
             x4 = x3(dec_seq);
-            auto x4_host = x4.host<af::cfloat>();
 
             // polar discriminator - x4(2:end).*conj(x4(1:end - 1));
             x5 = x4(af::seq(1, af::end, 1)) * af::conjg(x4(af::seq(0, -2, 1)));
             x5 = af::atan2(af::imag(x5), af::real(x5)) * phasor_scale;// .as(f32);
 
-            auto x5_host = x5.host<float>();
-
-
-            //af::array t2 = x4(af::seq(1, af::end, 1));
-            //af::array t3 = x4(af::seq(0, -2, 1));
-
-            //auto t4 = t2.dims();
-            //auto t5 = t3.dims();
-
-            //auto t1 = x5.type();
-            //auto t1a = x5.dims();
-
-            // a = [1, -1/3], b = 2/3
+            // run the audio through the low pass de-emphasis filter
             x6 = af::fir(af_lpf_de, x5);
-            //x6 = af::fir(audio_filter, x6);
 
+            // run the audio through a second low pass filter before decimation
             x6 = af::fir(af_lpf_a, x6);
 
             // decimate the audio sequence
             x7 = x6(seq_audio);
-            //x7 = (x7 * (1.0 / (af::max<float>(x7)))).as(af::dtype::u8);
-            //x7 = (x7 * (1.0 / (af::max<float>(x7))));
-            x7 = (x7 * 32.0).as(af::dtype::u8);
 
-            //auto x7_host = x7.host<uint8_t>();
+            // scale the audio from -1 to 1
+            x7 = (x7 * (1.0 / (af::max<float>(af::abs(x7)))));
 
-            //std::vector<uint8_t> audio(x7.dims(0), 0);
-            //for (idx = 0; idx < x7.dims(0); ++idx)
-            //{
-            //    audio[idx] = (uint8_t)x7_host[idx];
-            //}
+            // shift to 0 to 2 and then scale by 60
+            x7 = ((x7+1) * 60).as(af::dtype::u8);
 
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+            // place the data into the header for windows audio data
             WAVEHDR header = { (LPSTR)x7.host<uint8_t>(), x7.dims(0) * sizeof(uint8_t), 0, 0, 0, 0, 0, 0 };
-            //WAVEHDR header = { (LPSTR)audio.data(), audio.size(), 0, 0, 0, 0, 0, 0 };
 
             waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
             waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
-
-
-
-            //af::fftInPlace(raw_data, scale);
+#endif
 
             // show the results of the FFT in the window
             //fft_data = 20 * af::log10(af::shift(af::abs(af::fft(x3)*fft_scale), (num_samples >> 1)))-10;
@@ -433,6 +342,11 @@ int main(int argc, char** argv)
         blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
 
         bladerf_close(dev);
+
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+        waveOutClose(hWaveOut);
+#endif
+
     }
 
 #ifdef USE_ARRAYFIRE
