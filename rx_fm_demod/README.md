@@ -1,5 +1,5 @@
 # BladeRF FM Demodulator Example Project
-This project is designed to show how to configure the BladeRF2, continously recieve samples tuned to an FM radio station and then demodulate (only works in Windows right now).
+This project is designed to show how to configure the BladeRF2, continously recieve samples tuned to an FM radio station and then demodulate and send the audio to the default sound device on the PC (audio portion only works in Windows for right now).
 
 ## Dependencies
 
@@ -56,7 +56,7 @@ cmake ..
 cmake --build . --config Release -- -j4
 ```
 
-Or you can use the CMake GUI and set the "source code" location to the location of the CmakeLists.txt file and the set the "build" location to the build folder. Then open a terminal window and navigate to the build folder and execute the follokwing command:
+Or you can use the CMake GUI and set the "source code" location to the location of the CmakeLists.txt file and the set the "build" location to the build folder. Then open a terminal window and navigate to the build folder and execute the following command:
 
 ```
 cmake --build . --config Release -- -j4
@@ -69,8 +69,8 @@ The -- -j4 tells the make to use 4 cores to build the code.  This number can be 
 The code is run by entering the following on the command line:
 
 ```
-Windows: blade_rx
-Linux: ./blade_rx
+Windows: blade_fm_demod
+Linux: ./blade_fm_demod
 ```
 
 The code will scan the USB 3.0 bus to any available BladeRFs and they will be listed.  Select the index of the desired BladeRF and press Enter to begin capturing data.

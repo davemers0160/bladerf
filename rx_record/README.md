@@ -1,5 +1,5 @@
 # BladeRF Recieve Example Project
-This project is designed to show how to configure the BladeRF2, continously recieve samples and display the FFT of those samples.
+This project is designed to show how to configure the BladeRF2, recieve a spcified number of samples and then save those samples as a binary file.
 
 ## Dependencies
 
@@ -8,7 +8,6 @@ The code in this project has the following dependecies:
 1. [CMake 2.8.12+](https://cmake.org/download/ )
 2. [davemers0160 common code repository](https://github.com/davemers0160/Common )
 3. [BladeRF Driver & API](https://www.nuand.com )
-4. [ArrayFire](https://www.arrayfire.com/ )
 
 ## Build
 
@@ -56,7 +55,7 @@ cmake ..
 cmake --build . --config Release -- -j4
 ```
 
-Or you can use the CMake GUI and set the "source code" location to the location of the CmakeLists.txt file and the set the "build" location to the build folder. Then open a terminal window and navigate to the build folder and execute the follokwing command:
+Or you can use the CMake GUI and set the "source code" location to the location of the CmakeLists.txt file and the set the "build" location to the build folder. Then open a terminal window and navigate to the build folder and execute the following command:
 
 ```
 cmake --build . --config Release -- -j4
@@ -69,8 +68,8 @@ The -- -j4 tells the make to use 4 cores to build the code.  This number can be 
 The code is run by entering the following on the command line:
 
 ```
-Windows: blade_rx
-Linux: ./blade_rx
+Windows: blade_rec
+Linux: ./blade_rec
 ```
 
 The code will scan the USB 3.0 bus to any available BladeRFs and they will be listed.  Select the index of the desired BladeRF and press Enter to begin capturing data.

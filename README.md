@@ -15,6 +15,12 @@ The code in this repository has the following dependecies
 ### rx_example
 This folder contains the project code that illustrates the example code to configure the BladeRF to recieve samples and display them using the ArrayFire library. 
 
+### rx_fm_demod
+This folder contains the project code that illustrates the example code to configure the BladeRF, recieve samples and then perform the necessary digital signal processing (DSP) techniques needed to frequency shift, filter, downsample, and demodulate an FM radio station mono audio.  
+
+### rx_record
+This folder contains the project code that illustrates the example code to configure the BladeRF to recieve samples and then same them as a binary file for later use in C++, python, MATLAB, etc...
+
 ### tx_example
 This folder contains the project code that illustrates the example code to configure the BladeRF to transmit FSK samples.
 
