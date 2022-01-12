@@ -42,11 +42,11 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 96600000; //162425000;
-    bladerf_sample_rate sample_rate = 1000000;
-    bladerf_bandwidth rx_bw = 500000;
-    bladerf_gain rx1_gain = 16;
-    int64_t span = 500000;
+    bladerf_frequency rx_freq = 137500000; //162425000;
+    bladerf_sample_rate fs = 1400000;
+    bladerf_bandwidth rx_bw = 1400000;
+    bladerf_gain rx1_gain = 56;
+    int64_t span = 1400000;
 
     std::vector<int16_t> samples;
     uint32_t num_samples = 65536*2;
@@ -67,6 +67,7 @@ int main(int argc, char** argv)
     if (bladerf_num < 0)
     {
         std::cout << "could not detect any bladeRF devices..." << std::endl;
+        std::cin.ignore();
         return 0;
     }
 
@@ -91,7 +92,7 @@ int main(int argc, char** argv)
 
         // set the frequency, sample_rate and bandwidth
         blade_status = bladerf_set_frequency(dev, rx, rx_freq);
-        blade_status = bladerf_set_sample_rate(dev, rx, sample_rate, &sample_rate);
+        blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
         // the gain 
@@ -108,15 +109,23 @@ int main(int argc, char** argv)
         // the *2 is because one sample consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
         samples.resize(num_samples*2);
 
-        double freq_step = (sample_rate)/(double)num_samples;
+        double freq_step = (fs)/(double)num_samples;
 
         double f_min = (rx_freq - (span>>1)) * 1.0e-6;
         double f_max = (rx_freq + (span>>1)) * 1.0e-6;
 
-        uint32_t sp = (uint32_t)((sample_rate - span) / (2.0 * freq_step));
+        uint32_t sp = (uint32_t)((fs - span) / (2.0 * freq_step));
         uint32_t sp2 = (uint32_t)(span / freq_step);
 
         double scale = 1.0 / (double)(num_samples);
+
+
+        // print out the specifics
+        std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
+        std::cout << "fs:      " << fs << std::endl;
+        std::cout << "rx_freq: " << rx_freq << std::endl;
+        std::cout << "rx_bw:   " << rx_bw << std::endl;
+        std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
 #ifdef USE_ARRAYFIRE
 

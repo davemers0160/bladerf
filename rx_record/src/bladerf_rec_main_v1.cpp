@@ -39,18 +39,18 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 96600000; //162400000;
-    bladerf_sample_rate sample_rate = 1000000;
-    bladerf_bandwidth rx_bw = 1000000;
-    bladerf_gain rx1_gain = 48;
+    bladerf_frequency rx_freq = 137500000;// 96600000; //162400000;
+    bladerf_sample_rate fs = 1400000;
+    bladerf_bandwidth rx_bw = 1400000;
+    bladerf_gain rx1_gain = 64;
     //int64_t span = 1000000;
-    double t = 10;         // number of seconds to record
+    double t = 64;         // number of seconds to record
 
     std::string filename = "../recordings/162M425_test.bin";
     std::ofstream data_file;
 
     std::vector<int16_t> samples;
-    uint32_t num_samples = (uint32_t)(sample_rate * t);
+    uint32_t num_samples = (uint32_t)(fs * t);
     uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
     const uint32_t buffer_size = 1024 * 4* 8;        // must be a multiple of 1024
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 
         // set the frequency, sample_rate and bandwidth
         blade_status = bladerf_set_frequency(dev, rx, rx_freq);
-        blade_status = bladerf_set_sample_rate(dev, rx, sample_rate, &sample_rate);
+        blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
         // the gain 
@@ -118,6 +118,13 @@ int main(int argc, char** argv)
         //uint32_t sp2 = (uint32_t)(span / freq_step);
 
         //double scale = 1.0 / (double)(num_samples);
+                
+        // print out the specifics
+        std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
+        std::cout << "fs:      " << fs << std::endl;
+        std::cout << "rx_freq: " << rx_freq << std::endl;
+        std::cout << "rx_bw:   " << rx_bw << std::endl;
+        std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
         data_file.open(filename, ios::out | ios::binary);
 

@@ -68,7 +68,7 @@ int main(int argc, char** argv)
     bladerf_frequency rx_freq;
     bladerf_sample_rate fs;
     bladerf_bandwidth rx_bw;
-    bladerf_gain rx1_gain = 50;
+    bladerf_gain rx1_gain = 32;
     int64_t span = 100000;
 
     int64_t f_offset;           // offset from the tuned frequency (Hz)
@@ -112,6 +112,17 @@ int main(int argc, char** argv)
         audio_freq = 44100;
         n_taps = 100;
         break;
+        // FM radio station
+    case 2:
+        fs = 1000000;
+        rx_freq = 137000000;
+        rx_bw = 1000000;
+        f_offset = 100000;
+        channel_bw = 100000;
+        audio_freq = 41600;
+        n_taps = 100;
+        break;
+
     }
 
 #ifdef USE_ARRAYFIRE
