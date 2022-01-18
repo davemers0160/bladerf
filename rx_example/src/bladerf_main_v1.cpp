@@ -42,11 +42,11 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 137500000; //162425000;
-    bladerf_sample_rate fs = 1400000;
-    bladerf_bandwidth rx_bw = 1400000;
-    bladerf_gain rx1_gain = 56;
-    int64_t span = 1400000;
+    bladerf_frequency rx_freq = 137800000; //162425000;
+    bladerf_sample_rate fs = 624000;
+    bladerf_bandwidth rx_bw = 624000;
+    bladerf_gain rx1_gain = 64;
+    int64_t span = 500000;
 
     std::vector<int16_t> samples;
     uint32_t num_samples = 65536*2;
@@ -56,8 +56,14 @@ int main(int argc, char** argv)
     const uint32_t num_transfers = 8;
 
 #ifdef USE_ARRAYFIRE
+    af::setBackend(AF_BACKEND_CPU);
+    af::info();
+
+    std::cout << std::endl << std::endl;
+
     // array fire variables
     af::array raw_data, fft_data;
+
 #endif // USE_ARRAYFIRE
 
     int num_devices = bladerf_get_device_list(&device_list);
@@ -128,11 +134,6 @@ int main(int argc, char** argv)
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
 #ifdef USE_ARRAYFIRE
-
-        af::setBackend(AF_BACKEND_CPU);
-        af::info();
-
-        std::cout << std::endl;
 
         af::Window myWindow(800, 800, "FFT example: ArrayFire");
         //af::array X = af::seq(0, num_samples - 1, 1);

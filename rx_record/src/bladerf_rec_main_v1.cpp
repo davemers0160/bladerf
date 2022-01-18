@@ -39,12 +39,12 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 137500000;// 96600000; //162400000;
-    bladerf_sample_rate fs = 1400000;
-    bladerf_bandwidth rx_bw = 1400000;
+    bladerf_frequency rx_freq = 137800000;// 96600000; //162400000;
+    bladerf_sample_rate fs = 624000;
+    bladerf_bandwidth rx_bw = 624000;
     bladerf_gain rx1_gain = 64;
     //int64_t span = 1000000;
-    double t = 64;         // number of seconds to record
+    double t = 640;         // number of seconds to record
 
     std::string filename = "../recordings/162M425_test.bin";
     std::ofstream data_file;
@@ -136,11 +136,13 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Ready to record: " << filename << std::endl;
-        std::cout << "Press enter to start... " << std::endl;
+        std::cout << "Press enter to start:" << std::endl;
         std::cin.ignore();
 
         // collect some dummy samples
         blade_status = bladerf_sync_rx(dev, (void*)samples.data(), buffer_size, NULL, timeout_ms);
+
+        std::cout << "Recording started..." << std::endl << std::endl;
 
         // collect the samples
         blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);

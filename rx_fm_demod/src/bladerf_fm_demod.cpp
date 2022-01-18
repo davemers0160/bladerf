@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     //std::string filename = "../../rx_record/recordings/096M600_1M__10s_test.bin"; 
     //std::ifstream input_data(filename, std::ios::binary);
 
-    uint8_t test_case = 1;
+    uint8_t test_case = 2;
 
     switch (test_case)
     {
@@ -114,12 +114,12 @@ int main(int argc, char** argv)
         break;
         // FM radio station
     case 2:
-        fs = 1000000;
-        rx_freq = 137000000;
-        rx_bw = 1000000;
-        f_offset = 100000;
-        channel_bw = 100000;
-        audio_freq = 41600;
+        fs = 1400000;
+        rx_freq = 137500000;
+        rx_bw = 1400000;
+        f_offset = 120000;
+        channel_bw = 48000;
+        audio_freq = 4800;
         n_taps = 100;
         break;
 
