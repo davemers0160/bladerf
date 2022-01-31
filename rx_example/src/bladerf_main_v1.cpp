@@ -42,7 +42,7 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency rx_freq = 137800000; //162425000;
+    bladerf_frequency rx_freq = 137000000; //162425000;
     bladerf_sample_rate fs = 624000;
     bladerf_bandwidth rx_bw = 624000;
     bladerf_gain rx1_gain = 64;
@@ -54,6 +54,14 @@ int main(int argc, char** argv)
     const uint32_t num_buffers = 16;
     const uint32_t buffer_size = 1024 * 4 * 8;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
+    double t;
+
+    if (argc == 2)
+    {
+        std::string param_filename = argv[1];
+
+        read_bladerf_params(param_filename, rx_freq, fs, rx_bw, rx1_gain, t);
+    }
 
 #ifdef USE_ARRAYFIRE
     af::setBackend(AF_BACKEND_CPU);
@@ -98,12 +106,14 @@ int main(int argc, char** argv)
 
         // set the frequency, sample_rate and bandwidth
         blade_status = bladerf_set_frequency(dev, rx, rx_freq);
+        blade_status = bladerf_get_frequency(dev, rx, &rx_freq);
         blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
         // the gain 
         blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
         blade_status = bladerf_set_gain(dev, rx, rx1_gain);
+        blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
 
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
@@ -131,16 +141,18 @@ int main(int argc, char** argv)
         std::cout << "fs:      " << fs << std::endl;
         std::cout << "rx_freq: " << rx_freq << std::endl;
         std::cout << "rx_bw:   " << rx_bw << std::endl;
+        std::cout << "rx1_gain: " << rx1_gain << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
 #ifdef USE_ARRAYFIRE
 
         af::Window myWindow(800, 800, "FFT example: ArrayFire");
         //af::array X = af::seq(0, num_samples - 1, 1);
-        af::array X = af::seq(sp+1, (sp+sp2), 1);
+        af::array X = af::seq(sp+1, (sp+sp2+1), 1);
         //auto x2d = X.dims(0);
 
-        af::array f = af::seq(f_min, f_max - (freq_step*1.0e-6), (freq_step*1.0e-6));
+        //af::array f = af::seq(f_min, f_max - (freq_step * 1.0e-6), (freq_step * 1.0e-6));
+        af::array f = af::seq(f_min, f_max, (freq_step * 1.0e-6));
 
         myWindow.setAxesLimits(f_min, f_max - (freq_step * 1.0e-6), -120, -20, true);
         myWindow.setAxesTitles("Frequency (MHz)", "Power (dBm)");
@@ -174,7 +186,7 @@ int main(int argc, char** argv)
             af::fftInPlace(raw_data, scale);
             //auto a1 = af::abs(raw_data).host<float>();
 
-            fft_data = 20 * af::log10(af::shift(af::abs(raw_data), (num_samples >> 1)))-10;
+            fft_data = 20 * af::log10(af::shift(af::abs(raw_data), (num_samples >> 1)));
 
             // show the results of the FFT in the window
             myWindow.plot(f, fft_data(X));

@@ -42,26 +42,35 @@ int main(int argc, char** argv)
     bladerf_frequency rx_freq = 137800000;// 96600000; //162400000;
     bladerf_sample_rate fs = 624000;
     bladerf_bandwidth rx_bw = 624000;
-    bladerf_gain rx1_gain = 64;
+    bladerf_gain rx1_gain = 24;
     //int64_t span = 1000000;
-    double t = 640;         // number of seconds to record
+    double t;         // number of seconds to record
 
     std::string filename = "../recordings/162M425_test.bin";
     std::ofstream data_file;
 
     std::vector<int16_t> samples;
-    uint32_t num_samples = (uint32_t)(fs * t);
+    uint32_t num_samples;
     uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
     const uint32_t buffer_size = 1024 * 4* 8;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
 
-    if (argc > 1)
-    {
-        filename = argv[1];
-    }
+    try{    
+        
+        if (argc == 2)
+        {
+            filename = argv[1];
+        }
+        else if (argc == 3)
+        {
+            filename = argv[1];
 
-    try{
+            std::string param_filename = argv[2];
+            read_bladerf_params(param_filename, rx_freq, fs, rx_bw, rx1_gain, t);
+        }
+
+        num_samples = (uint32_t)(fs * t);
 
         num_devices = bladerf_get_device_list(&device_list);
 
@@ -92,12 +101,14 @@ int main(int argc, char** argv)
 
         // set the frequency, sample_rate and bandwidth
         blade_status = bladerf_set_frequency(dev, rx, rx_freq);
+        blade_status = bladerf_get_frequency(dev, rx, &rx_freq);
         blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
         // the gain 
         blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
         blade_status = bladerf_set_gain(dev, rx, rx1_gain);
+        blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
 
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
@@ -121,9 +132,11 @@ int main(int argc, char** argv)
                 
         // print out the specifics
         std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
-        std::cout << "fs:      " << fs << std::endl;
-        std::cout << "rx_freq: " << rx_freq << std::endl;
-        std::cout << "rx_bw:   " << rx_bw << std::endl;
+        std::cout << "fs:       " << fs << std::endl;
+        std::cout << "rx_freq:  " << rx_freq << std::endl;
+        std::cout << "rx_bw:    " << rx_bw << std::endl;
+        std::cout << "rx1_gain: " << rx1_gain << std::endl;
+        std::cout << "time:     " << t << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
         data_file.open(filename, ios::out | ios::binary);
