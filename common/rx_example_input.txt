@@ -10,7 +10,10 @@
 624000
 
 # line 3: gain on the RX channel
-20
+40
 
 # line 4: record time
 640
+
+# line 5: save file
+../recordings/137M800_0M624__640s_test3.bin

@@ -76,7 +76,8 @@ void read_bladerf_params(std::string param_filename,
     bladerf_sample_rate& fs,
     bladerf_bandwidth& rx_bw,
     bladerf_gain& rx1_gain,
-    double &t
+    double* t = nullptr,                /* optional */
+    std::string* filename = nullptr     /* optional */
 )
 {
 
@@ -129,18 +130,29 @@ void read_bladerf_params(std::string param_filename,
             }
             catch (...)
             {
-                rx1_gain = 1000000;
+                rx1_gain = 20;
             }
             break;
 
         case 4:
-            try
+            if (t != nullptr)
             {
-                t = std::stod(params[idx][0]);
+                try
+                {
+                    *t = std::stod(params[idx][0]);
+                }
+                catch (...)
+                {
+                    *t = 10;
+                }
             }
-            catch (...)
+            break;
+
+
+        case 5:
+            if (filename != nullptr)
             {
-                t = 10;
+                *filename = params[idx][0];
             }
             break;
         }

@@ -17,8 +17,6 @@
 #include <libbladeRF.h>
 #include <bladeRF2.h>
 
-
-
 // Custom Includes
 #include "num2string.h"
 #include "get_current_time.h"
@@ -60,7 +58,7 @@ int main(int argc, char** argv)
     {
         std::string param_filename = argv[1];
 
-        read_bladerf_params(param_filename, rx_freq, fs, rx_bw, rx1_gain, t);
+        read_bladerf_params(param_filename, rx_freq, fs, rx_bw, rx1_gain);
     }
 
 #ifdef USE_ARRAYFIRE
@@ -110,16 +108,19 @@ int main(int argc, char** argv)
         blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
-        // the gain 
-        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
-        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
-        blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
+        const bladerf_range* range;
+        blade_status = bladerf_get_gain_range(dev, rx, &range);
 
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
 
         // enable the rx channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_RX, true);
+
+        // the gain must be set after the module has been enabled
+        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
+        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
+        blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
 
         // receive the samples 
         // the *2 is because one sample consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
@@ -138,9 +139,9 @@ int main(int argc, char** argv)
 
         // print out the specifics
         std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
-        std::cout << "fs:      " << fs << std::endl;
-        std::cout << "rx_freq: " << rx_freq << std::endl;
-        std::cout << "rx_bw:   " << rx_bw << std::endl;
+        std::cout << "fs:       " << fs << std::endl;
+        std::cout << "rx_freq:  " << rx_freq << std::endl;
+        std::cout << "rx_bw:    " << rx_bw << std::endl;
         std::cout << "rx1_gain: " << rx1_gain << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
