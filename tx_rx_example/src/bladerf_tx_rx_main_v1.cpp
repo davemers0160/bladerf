@@ -100,7 +100,7 @@ std::vector<T> maximal_length_sequence(uint16_t N, uint16_t rep, T amplitude)
 }   // end of maximal_length_sequence
 
 // ----------------------------------------------------------------------------
-void RX(struct bladerf* dev, std::vector<int16_t> &samples)
+inline void RX(struct bladerf* dev, std::vector<int16_t> &samples)
 {
     int blade_status;
     uint32_t num_samples = samples.size() >> 1;
@@ -129,7 +129,7 @@ void RX(struct bladerf* dev, std::vector<int16_t> &samples)
 }
 
 // ----------------------------------------------------------------------------
-void TX(struct bladerf* dev, std::vector<std::complex<int16_t>>& samples)
+inline void TX(struct bladerf* dev, std::vector<std::complex<int16_t>>& samples)
 {
     uint32_t num_samples = samples.size();
 
@@ -276,9 +276,9 @@ int main(int argc, char** argv)
         // for 10 MSps => 0.0333564 samples
         // for 20 MSps => 0.0667128 samples
         // for 40 MSps => 0.1334256 samples
-        std::vector<int16_t> pulse = maximal_length_sequence<int16_t>(4, 4, amplitude);
+        std::vector<int16_t> pulse = maximal_length_sequence<int16_t>(3, 1, amplitude);
 
-        pulse.insert(pulse.end(), 2048 - pulse.size(), 0);
+        pulse.insert(pulse.end(), buffer_size - pulse.size(), 0);
 
 
         std::vector<std::complex<int16_t>> tx_c(pulse.size());
@@ -334,7 +334,7 @@ int main(int argc, char** argv)
             */
             rx_complete = false;
 
-            for(uint32_t jdx=0; jdx<8; ++jdx)
+            for(uint32_t jdx=0; jdx<4; ++jdx)
                 TX(dev, tx_c);
             //TX(dev, tx_c);
             //TX(dev, tx_c);
