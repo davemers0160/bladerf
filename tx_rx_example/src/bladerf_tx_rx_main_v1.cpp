@@ -41,7 +41,7 @@ void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 {
     std::ofstream data_file;
 
-    T r, q;
+    //T r, q;
 
     data_file.open(filename, ios::out | ios::binary);
 
@@ -168,14 +168,13 @@ int main(int argc, char** argv)
 
     int64_t span = 500000;
 
-    uint32_t num_rx_samples = 1000000;
-    std::vector<int16_t> rx_samples(num_rx_samples*2);
+
     //uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
     const uint32_t buffer_size = 1024 * 2 * 8;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
     double t;
-    int16_t amplitude = 1600;
+    int16_t amplitude = 1800;
 
     std::string chirp_filename = "../recordings/test_chirp.bin";
     std::string data_filename = "../recordings/test_record_chirp.bin";
@@ -187,6 +186,9 @@ int main(int argc, char** argv)
 
         read_bladerf_params(param_filename, freq, fs, bw, rx1_gain);
     }
+
+    uint64_t num_rx_samples = (uint64_t)floor(fs * 0.050);  // 50ms of samples
+    std::vector<int16_t> rx_samples(num_rx_samples*2);
 
 #ifdef USE_ARRAYFIRE
     af::setBackend(AF_BACKEND_CPU);
@@ -334,7 +336,7 @@ int main(int argc, char** argv)
             */
             rx_complete = false;
 
-            for(uint32_t jdx=0; jdx<4; ++jdx)
+            //for(uint32_t jdx=0; jdx<4; ++jdx)
                 TX(dev, tx_c);
             //TX(dev, tx_c);
             //TX(dev, tx_c);

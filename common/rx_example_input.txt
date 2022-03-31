@@ -5,10 +5,12 @@
 2000000000
 
 # line 1: sample rate (Sps)
-2000000
+#2000000
+40000000
 
 # line 2: Size of the input filter (Hz)
-2000000
+#2000000
+40000000
 
 # line 3: gain on the RX channel
 40
