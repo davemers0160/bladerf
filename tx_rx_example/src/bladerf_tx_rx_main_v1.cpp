@@ -2,6 +2,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+#define _USE_MATH_DEFINES
 
 #elif defined(__linux__)
 
@@ -9,6 +10,7 @@
 // ArrayFire Includes
 #include <arrayfire.h>
 
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <sstream>
@@ -36,6 +38,7 @@ std::atomic<bool> rx_complete(false);
 
 uint32_t timeout_ms = 10000;
 
+// ----------------------------------------------------------------------------
 template<typename T>
 void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 {
@@ -65,8 +68,27 @@ void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 }
 
 // ----------------------------------------------------------------------------
+std::vector<std::complex<int16_t>> generate_lfm_chirp(int64_t f_start, int64_t f_stop, uint64_t fs, double signal_length, int16_t amplitude)
+{
+    uint64_t idx;
+
+    uint64_t N = (uint64_t)(fs * signal_length);
+    std::vector<std::complex<int16_t>> iq(N, std::complex<int16_t>(0, 0));
+    std::complex<double> tmp;
+    double t = 1.0 / fs;
+
+    for (idx = 0; idx < N; ++idx)
+    {
+        tmp = exp(1i * 2.0 * M_PI * (f_start * idx * t + (f_stop - f_start) * 0.5 * idx * idx * t * t / signal_length));
+        iq[idx] = std::complex<int16_t>(amplitude * tmp.real(), amplitude * tmp.imag());
+    }
+
+    return iq;
+}
+
+// ----------------------------------------------------------------------------
 template<typename T>
-std::vector<T> maximal_length_sequence(uint16_t N, uint16_t rep, T amplitude)
+inline std::vector<T> maximal_length_sequence(uint16_t N, uint16_t rep)
 {
     uint64_t idx, jdx;
     uint16_t tmp;
@@ -83,7 +105,8 @@ std::vector<T> maximal_length_sequence(uint16_t N, uint16_t rep, T amplitude)
 
     for (idx = 0; idx < sr_size; ++idx)
     {
-        sr.insert(sr.end(), rep, amplitude * (2*r[N-1] - 1));
+//        sr.insert(sr.end(), rep, amplitude * (2 * r[N - 1] - 1));
+        sr.insert(sr.end(), rep, r[N - 1]);
 
         tmp = 0;
         for (jdx = 0; jdx < taps.size(); ++jdx)
@@ -100,6 +123,54 @@ std::vector<T> maximal_length_sequence(uint16_t N, uint16_t rep, T amplitude)
 }   // end of maximal_length_sequence
 
 // ----------------------------------------------------------------------------
+template<typename T>
+inline std::vector<std::complex<T>> generate_bpsk_iq(std::vector<T> s, T amplitude)
+{
+    uint64_t idx;
+
+    std::vector<std::complex<T>> data(s.size(), std::complex<T>(0,0));
+
+    for (idx = 0; idx < s.size(); ++idx)
+    {
+        data[idx] = std::complex<T>(amplitude * (2 * s[idx] - 1), 0);
+    }
+
+    return data;
+}
+
+// ----------------------------------------------------------------------------
+template<typename T>
+inline std::vector<std::complex<T>> generate_pulse_iq(std::vector<T> s, int64_t freq, uint64_t fs, double tick, T amplitude)
+{
+    uint64_t idx;
+    uint64_t N = (uint64_t)(fs * tick);
+    std::vector<std::complex<T>> data;
+
+    double t = freq / (double)fs;
+    std::complex<double> tmp;
+    std::vector<std::complex<T>> iq(N, std::complex<T>(0, 0));
+
+    for (idx = 0; idx < N; ++idx)
+    {
+        tmp = exp(1i * 2.0 * M_PI * (idx * t));
+        iq[idx] = std::complex<T>(amplitude * tmp.real(), amplitude * tmp.imag());
+    }
+
+    for (idx = 0; idx < s.size(); ++idx)
+    {
+        
+        if (s[idx] == 1)
+            data.insert(data.end(), iq.begin(), iq.end());
+        else
+            data.insert(data.end(), N, std::complex<int16_t>(0, 0));
+
+    }
+
+    return data;
+
+}
+
+// ----------------------------------------------------------------------------
 inline void RX(struct bladerf* dev, std::vector<int16_t> &samples)
 {
     int blade_status;
@@ -109,6 +180,7 @@ inline void RX(struct bladerf* dev, std::vector<int16_t> &samples)
     {
         if (rx_complete == false)
         {
+            std::cout << "RX Started..." << std::endl;
             blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
             if (blade_status != 0)
             {
@@ -118,13 +190,7 @@ inline void RX(struct bladerf* dev, std::vector<int16_t> &samples)
 
             rx_complete = true;
         }
-        // try to compute the fft using the arrayfire library
-        //std::vector<std::complex<float>> c_samples(num_samples);
-        //int index = 0;
-        //for (idx = 0; idx < samples.size(); idx += 2)
-        //{
-        //    c_samples[index++] = std::complex<float>((float)samples[idx], (float)samples[idx + 1]);
-        //}
+
     }
 }
 
@@ -160,9 +226,12 @@ int main(int argc, char** argv)
     int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency freq = 137000000; //162425000;
-    bladerf_sample_rate fs = 624000;
-    bladerf_bandwidth bw = 624000;
+    bladerf_frequency rx_freq = 137000000; //162425000;
+    bladerf_frequency tx_freq = 137000000; //162425000;
+    bladerf_sample_rate rx_fs = 624000;
+    bladerf_sample_rate tx_fs = 624000;
+    bladerf_bandwidth rx_bw = 624000;
+    bladerf_bandwidth tx_bw = 624000;
     bladerf_gain rx1_gain = 30;
     bladerf_gain tx1_gain = 10;
 
@@ -171,9 +240,9 @@ int main(int argc, char** argv)
 
     //uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
-    const uint32_t buffer_size = 1024 * 2 * 8;        // must be a multiple of 1024
+    const uint32_t buffer_size = 1024;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
-    double t;
+    double t = 0;
     int16_t amplitude = 1800;
 
     std::string chirp_filename = "../recordings/test_chirp.bin";
@@ -184,10 +253,10 @@ int main(int argc, char** argv)
     {
         std::string param_filename = argv[1];
 
-        read_bladerf_params(param_filename, freq, fs, bw, rx1_gain);
+        read_bladerf_params(param_filename, rx_freq, rx_fs, rx_bw, rx1_gain, &t);
     }
 
-    uint64_t num_rx_samples = (uint64_t)floor(fs * 0.050);  // 50ms of samples
+    uint64_t num_rx_samples = (uint64_t)floor(rx_fs * t);  // 50ms of samples
     std::vector<int16_t> rx_samples(num_rx_samples*2);
 
 #ifdef USE_ARRAYFIRE
@@ -229,17 +298,22 @@ int main(int argc, char** argv)
             std::cout << "Unable to get the device info: " << std::string(bladerf_strerror(blade_status)) << std::endl;
             return blade_status;
         }
-        std::cout << std::endl << dev_info << std::endl;
+        std::cout << std::endl << dev_info;
+        //std::cout << "FPGA: " << 
 
         // set the frequency, sample_rate and bandwidth
-        blade_status = bladerf_set_frequency(dev, rx, freq);
-        blade_status = bladerf_get_frequency(dev, rx, &freq);
-        blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
-        blade_status = bladerf_set_bandwidth(dev, rx, bw, &bw);
+        blade_status = bladerf_set_frequency(dev, rx, rx_freq);
+        blade_status = bladerf_get_frequency(dev, rx, &rx_freq);
+        blade_status = bladerf_set_sample_rate(dev, rx, rx_fs, &rx_fs);
+        blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
-        blade_status = bladerf_set_frequency(dev, tx, freq);
-        blade_status = bladerf_set_sample_rate(dev, tx, fs, &fs);
-        blade_status = bladerf_set_bandwidth(dev, tx, bw, &bw);
+        tx_freq = rx_freq;
+        tx_fs = 8e6;
+        tx_bw = 8e6;
+        blade_status = bladerf_set_frequency(dev, tx, tx_freq);
+        blade_status = bladerf_get_frequency(dev, tx, &tx_freq);
+        blade_status = bladerf_set_sample_rate(dev, tx, tx_fs, &tx_fs);
+        blade_status = bladerf_set_bandwidth(dev, tx, tx_bw, &tx_bw);
 
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
@@ -250,10 +324,10 @@ int main(int argc, char** argv)
         blade_status = bladerf_enable_module(dev, BLADERF_TX, true);
 
         // the gain must be set after the module has been enabled
-        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
+        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MGC);
         blade_status = bladerf_set_gain(dev, rx, rx1_gain);
         blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
-        blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MANUAL);
+        blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MGC);
         blade_status = bladerf_set_gain(dev, tx, tx1_gain);
         blade_status = bladerf_get_gain(dev, tx, &tx1_gain);
 
@@ -261,12 +335,12 @@ int main(int argc, char** argv)
         // the *2 is because one sample consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
         //samples.resize(num_samples*2);
 
-        double freq_step = (fs)/(double)num_rx_samples;
+        double freq_step = (rx_fs)/(double)num_rx_samples;
 
-        double f_min = (freq - (span>>1)) * 1.0e-6;
-        double f_max = (freq + (span>>1)) * 1.0e-6;
+        double f_min = (rx_freq - (span>>1)) * 1.0e-6;
+        double f_max = (rx_freq + (span>>1)) * 1.0e-6;
 
-        uint32_t sp = (uint32_t)((fs - span) / (2.0 * freq_step));
+        uint32_t sp = (uint32_t)((rx_fs - span) / (2.0 * freq_step));
         uint32_t sp2 = (uint32_t)(span / freq_step);
 
         double scale = 1.0 / (double)(num_rx_samples);
@@ -278,24 +352,21 @@ int main(int argc, char** argv)
         // for 10 MSps => 0.0333564 samples
         // for 20 MSps => 0.0667128 samples
         // for 40 MSps => 0.1334256 samples
-        std::vector<int16_t> pulse = maximal_length_sequence<int16_t>(3, 1, amplitude);
+        // ----------------------------------------------------------------------------
 
-        pulse.insert(pulse.end(), buffer_size - pulse.size(), 0);
+        auto seq = maximal_length_sequence<int16_t>(3, 5);
 
+        //std::vector<complex<int16_t>> tx_c = generate_lfm_chirp(0, 5e5, tx_fs, 0.00005, 1800);
+        //std::vector<complex<int16_t>> tx_c = generate_pulse_iq<int16_t>(seq, 2e6, tx_fs, 10.0 / 2.0e6, 1800);
+        std::vector<complex<int16_t>> tx_c = generate_bpsk_iq<int16_t>(seq, 1800);
 
-        std::vector<std::complex<int16_t>> tx_c(pulse.size());
-        int index = 0;
-        for (idx = 0; idx < pulse.size(); ++idx)
-        {
-            tx_c[idx] = std::complex<int16_t>(pulse[idx], 0);
-        }
+        tx_c.insert(tx_c.end(), (20 * buffer_size) - tx_c.size(), std::complex<int16_t>(0, 0));
+        tx_c.insert(tx_c.begin(), 2*buffer_size, std::complex<int16_t>(0, 0));
 
         save_complex_data(chirp_filename, tx_c);
 
         rx_run = true;
         rx_complete = true;
-
-
 
         // start the rx thread
         std::thread rx_thread(RX, dev, std::ref(rx_samples));
@@ -305,11 +376,16 @@ int main(int argc, char** argv)
 
         // print out the specifics
         std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
-        std::cout << "fs:       " << fs << std::endl;
-        std::cout << "freq:  " << freq << std::endl;
-        std::cout << "bw:    " << bw << std::endl;
-        std::cout << "rx1_gain: " << rx1_gain << std::endl;
-        std::cout << "tx1_gain: " << tx1_gain << std::endl;
+        std::cout << "Receiver: " << std::endl;
+        std::cout << "  freq:     " << rx_freq << std::endl;
+        std::cout << "  fs:       " << rx_fs << std::endl;
+        std::cout << "  bw:       " << rx_bw << std::endl;
+        std::cout << "  rx1_gain: " << rx1_gain << std::endl;
+        std::cout << "Transmitter: " << std::endl;
+        std::cout << "  freq:     " << tx_freq << std::endl;
+        std::cout << "  fs:       " << tx_fs << std::endl;
+        std::cout << "  bw:       " << tx_bw << std::endl;
+        std::cout << "  tx1_gain: " << tx1_gain << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 /*
 #ifdef USE_ARRAYFIRE
@@ -334,10 +410,12 @@ int main(int argc, char** argv)
 
         {
             */
+
             rx_complete = false;
 
-            //for(uint32_t jdx=0; jdx<4; ++jdx)
+            for(uint32_t jdx=0; jdx<3; ++jdx)
                 TX(dev, tx_c);
+            //TX(dev, tx_c);
             //TX(dev, tx_c);
             //TX(dev, tx_c);
             //TX(dev, tx_c);
