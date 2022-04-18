@@ -8,7 +8,9 @@
 
 #endif
 // ArrayFire Includes
+#ifdef USE_ARRAYFIRE
 #include <arrayfire.h>
+#endif
 
 #include <cmath>
 #include <cstdint>
@@ -17,6 +19,7 @@
 #include <deque>
 #include <atomic>
 #include <thread>
+#include <complex>
 
 // bladeRF includes
 #include <libbladeRF.h>
@@ -249,12 +252,15 @@ int main(int argc, char** argv)
     std::string data_filename = "../recordings/test_record_chirp.bin";
     std::ofstream data_file, chirp_file;
 
-    if (argc == 2)
+    if (argc != 2)
     {
-        std::string param_filename = argv[1];
-
-        read_bladerf_params(param_filename, rx_freq, rx_fs, rx_bw, rx1_gain, &t);
+        std::cout << "enter parameter file..." << std::endl;
+        std::cin.ignore();
+        return 0;
     }
+
+    std::string param_filename = argv[1];
+    read_bladerf_params(param_filename, rx_freq, rx_fs, rx_bw, rx1_gain, &t);
 
     uint64_t num_rx_samples = (uint64_t)floor(rx_fs * t);  // 50ms of samples
     std::vector<int16_t> rx_samples(num_rx_samples*2);
@@ -308,8 +314,8 @@ int main(int argc, char** argv)
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
         tx_freq = rx_freq;
-        tx_fs = 8e6;
-        tx_bw = 8e6;
+        tx_fs = 50e6;
+        tx_bw = 50e6;
         blade_status = bladerf_set_frequency(dev, tx, tx_freq);
         blade_status = bladerf_get_frequency(dev, tx, &tx_freq);
         blade_status = bladerf_set_sample_rate(dev, tx, tx_fs, &tx_fs);
@@ -356,11 +362,11 @@ int main(int argc, char** argv)
 
         auto seq = maximal_length_sequence<int16_t>(3, 5);
 
-        //std::vector<complex<int16_t>> tx_c = generate_lfm_chirp(0, 5e5, tx_fs, 0.00005, 1800);
+        std::vector<complex<int16_t>> tx_c = generate_lfm_chirp(1e6, 2e6, tx_fs, 0.0001, 1800);
         //std::vector<complex<int16_t>> tx_c = generate_pulse_iq<int16_t>(seq, 2e6, tx_fs, 10.0 / 2.0e6, 1800);
-        std::vector<complex<int16_t>> tx_c = generate_bpsk_iq<int16_t>(seq, 1800);
+        //std::vector<complex<int16_t>> tx_c = generate_bpsk_iq<int16_t>(seq, 1800);
 
-        tx_c.insert(tx_c.end(), (20 * buffer_size) - tx_c.size(), std::complex<int16_t>(0, 0));
+        tx_c.insert(tx_c.end(), (60 * buffer_size) - tx_c.size(), std::complex<int16_t>(0, 0));
         tx_c.insert(tx_c.begin(), 2*buffer_size, std::complex<int16_t>(0, 0));
 
         save_complex_data(chirp_filename, tx_c);
@@ -410,10 +416,11 @@ int main(int argc, char** argv)
 
         {
             */
-
+        while (1)
+        {
             rx_complete = false;
 
-            for(uint32_t jdx=0; jdx<3; ++jdx)
+            for (uint32_t jdx = 0; jdx < 30; ++jdx)
                 TX(dev, tx_c);
             //TX(dev, tx_c);
             //TX(dev, tx_c);
@@ -428,7 +435,9 @@ int main(int argc, char** argv)
 
             std::cout << std::endl;
 
+            std::cin.ignore();
 
+        }
             //blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
             //if (blade_status != 0)
             //{
