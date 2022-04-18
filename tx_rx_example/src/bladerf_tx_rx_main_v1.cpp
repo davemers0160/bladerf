@@ -333,7 +333,7 @@ int main(int argc, char** argv)
         blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MGC);
         blade_status = bladerf_set_gain(dev, rx, rx1_gain);
         blade_status = bladerf_get_gain(dev, rx, &rx1_gain);
-        blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MGC);
+        //blade_status = bladerf_set_gain_mode(dev, tx, BLADERF_GAIN_MGC);
         blade_status = bladerf_set_gain(dev, tx, tx1_gain);
         blade_status = bladerf_get_gain(dev, tx, &tx1_gain);
 
