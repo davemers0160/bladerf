@@ -36,13 +36,16 @@ int select_bladerf(int num_devices, struct bladerf_devinfo* device_list)
     uint32_t idx;
     std::string console_input;
 
-    if (num_devices > 0)
+    if (num_devices == 1)
+    {
+        return 0;
+    }
+    else if (num_devices > 1)
     {
 
         for (idx = 0; idx < num_devices; ++idx)
         {
             std::cout << "BladeRF Device [" << idx << "]: " << std::string(device_list[idx].serial) << std::endl;
-            //std::cout << device_list[idx] << std::endl;
         }
         
         std::cout << "Select BladeRF device number: ";
