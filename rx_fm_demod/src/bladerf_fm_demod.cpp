@@ -12,7 +12,9 @@
 
 #endif
 // ArrayFire Includes
+#ifdef USE_ARRAYFIRE
 #include <arrayfire.h>
+#endif
 
 #include <cstdint>
 #include <cmath>
