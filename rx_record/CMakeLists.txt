@@ -42,7 +42,7 @@ if(WIN32)
     elseif(${PLATFORM} STREQUAL "BEAST")
         set(COMMON_ROOT "D:/Common")
     else()
-        set(COMMON_ROOT "D:/Common")
+        set(COMMON_ROOT "C:/Projects/Common")
     endif()    
     
 else()
