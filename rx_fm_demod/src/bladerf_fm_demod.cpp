@@ -89,7 +89,7 @@ int main(int argc, char** argv)
     //std::string filename = "../../rx_record/recordings/096M600_1M__10s_test.bin"; 
     //std::ifstream input_data(filename, std::ios::binary);
 
-    uint8_t test_case = 2;
+    uint8_t test_case = 1;
 
     switch (test_case)
     {
