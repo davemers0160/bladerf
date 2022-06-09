@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     uint32_t num_samples = 65536*2;
     uint32_t timeout_ms = 10000;
     const uint32_t num_buffers = 16;
-    const uint32_t buffer_size = 1024 * 4 * 8;        // must be a multiple of 1024
+    const uint32_t buffer_size = 1024 * 64;        // must be a multiple of 1024
     const uint32_t num_transfers = 8;
     const float scale = (1.0 / 2048.0);
     std::vector<std::complex<int16_t>> samples(num_samples);
@@ -270,23 +270,22 @@ int main(int argc, char** argv)
 
 #ifdef USE_ARRAYFIRE
 
-        af::Window myWindow(800, 800, "FFT example: ArrayFire");
+        //af::Window myWindow(800, 800, "FFT example: ArrayFire");
         af::array X = af::seq(sp+1, (sp+sp2), 1);
 
         af::array f = af::seq(f_min, f_max - (freq_step*1.0e-6), (freq_step*1.0e-6));
 
         //myWindow.setAxesLimits(f_min, f_max - (freq_step * 1.0e-6), -120, -20, true);
         //myWindow.setAxesTitles("Frequency (MHz)", "Power (dBm)");
-        myWindow.setAxesLimits(-1.5, 1.5, -1.5, 1.5, false);
-        myWindow.setAxesTitles("Real", "Imag");
+        //myWindow.setAxesLimits(-1.5, 1.5, -1.5, 1.5, false);
+        //myWindow.setAxesTitles("Real", "Imag");
 
-        while (!myWindow.close())
+        //while (!myWindow.close())
 
 #else
 
-        while(1)
 #endif
-
+        while(1)
         {
             
             blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
@@ -343,8 +342,8 @@ int main(int argc, char** argv)
             //fft_data = 20 * af::log10(af::shift(af::abs(af::fft(x3)*fft_scale), (num_samples >> 1)))-10;
             //myWindow.plot(f, fft_data(X));
 
-            myWindow.scatter(af::real(x4), af::imag(x4));
-            myWindow.show();
+            //myWindow.scatter(af::real(x4), af::imag(x4));
+            //myWindow.show();
 
             //sleep_ms(10000);
 
