@@ -46,9 +46,9 @@ int main(int argc, char** argv)
     bladerf_sample_rate sample_rate = 10000000;     // 10 MHz
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
-    bladerf_frequency tx_freq = 314300000;
-    bladerf_bandwidth tx_bw = 5000000;
-    bladerf_gain tx1_gain = 10;
+    bladerf_frequency tx_freq = 1694000000;// 314300000;
+    bladerf_bandwidth tx_bw = 2000000;
+    bladerf_gain tx1_gain = 60;
 
     std::vector<int16_t> samples;
     uint64_t num_samples;
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     // ----------------------------------------------------------------------------
     // create the bits in RF
     // the number of samples per bit
-    uint32_t bit_samples = 10000;
+    uint32_t bit_samples = 50000;
 
     // the frequency offset for the FSK modulation - 200kHz
     double freq_offset = 200000;
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
         idx = 0;
 
-        while (idx<100)
+        while (idx<1000)
         {
             blade_status = bladerf_sync_tx(dev, (int16_t*)iq_data.data(), num_samples, NULL, timeout_ms);
 
