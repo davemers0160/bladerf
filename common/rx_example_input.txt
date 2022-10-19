@@ -2,21 +2,21 @@
 
 # line 0: RF Frequency (Hz)
 #137500000
-1600000000
+1694000000
 
 # line 1: sample rate (Sps)
 #2000000
-50000000
+4000000
 
 # line 2: Size of the input filter (Hz)
 #2000000
-10000000
+4000000
 
 # line 3: gain on the RX channel
-60
+30
 
 # line 4: record time (s)
-0.005
+1.00
 
 # line 5: save file
-../recordings/137M800_0M624__640s_test3.bin
+../recordings/1694M000_5M__1s_test1.bin

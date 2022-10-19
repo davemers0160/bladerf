@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
     bladerf_frequency tx_freq = 1694000000;// 314300000;
     bladerf_bandwidth tx_bw = 2000000;
-    bladerf_gain tx1_gain = 60;
+    bladerf_gain tx1_gain = 00;
 
     std::vector<int16_t> samples;
     uint64_t num_samples;
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     uint32_t bit_samples = 50000;
 
     // the frequency offset for the FSK modulation - 200kHz
-    double freq_offset = 200000;
+    double freq_offset = 100000;
 
     // vectors to store the IQ representation of a 0 and a 1
     std::vector<int16_t> IQ_1, IQ_0;
@@ -92,10 +92,10 @@ int main(int argc, char** argv)
     // generate the samples - consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
     for (idx = 0; idx < bit_samples; ++idx)
     {
-        IQ_1.push_back((int16_t)(1200 * (cos((2 * pi * freq_offset * idx) / (double)sample_rate))));
-        IQ_1.push_back((int16_t)(1200 * (sin((2 * pi * freq_offset * idx) / (double)sample_rate))));
-        IQ_0.push_back((int16_t)(1200 * (cos((2 * pi * -freq_offset * idx) / (double)sample_rate))));
-        IQ_0.push_back((int16_t)(1200 * (sin((2 * pi * -freq_offset * idx) / (double)sample_rate))));
+        IQ_1.push_back((int16_t)(1200 * (cos((-2.0 * pi * freq_offset * idx) / (double)sample_rate))));
+        IQ_1.push_back((int16_t)(1200 * (sin((-2.0 * pi * freq_offset * idx) / (double)sample_rate))));
+        IQ_0.push_back((int16_t)(1200 * (cos((2.0 * pi * freq_offset * idx) / (double)sample_rate))));
+        IQ_0.push_back((int16_t)(1200 * (sin((2.0 * pi * freq_offset * idx) / (double)sample_rate))));
     }
 
     // run through each data bit and map the bit_samples of IQ data
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
         idx = 0;
 
-        while (idx<1000)
+        while (idx<500)
         {
             blade_status = bladerf_sync_tx(dev, (int16_t*)iq_data.data(), num_samples, NULL, timeout_ms);
 

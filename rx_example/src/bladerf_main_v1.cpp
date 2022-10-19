@@ -126,6 +126,7 @@ int main(int argc, char** argv)
         // the *2 is because one sample consists of one I and one Q.  The data should be packed IQIQIQIQIQIQ...
         samples.resize(num_samples*2);
 
+        span = fs;
         double freq_step = (fs)/(double)num_samples;
 
         double f_min = (rx_freq - (span>>1)) * 1.0e-6;
