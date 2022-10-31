@@ -11,6 +11,7 @@
 #elif defined(__linux__)
 
 #endif
+
 // ArrayFire Includes
 #ifdef USE_ARRAYFIRE
 #include <arrayfire.h>
@@ -25,8 +26,8 @@
 #include <complex>
 
 // bladeRF includes
-#include <libbladeRF.h>
-#include <bladeRF2.h>
+//#include <libbladeRF.h>
+//#include <bladeRF2.h>
 
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
@@ -39,10 +40,14 @@
 #include "sleep_ms.h"
 #include "dsp/dsp_windows.h"
 
+#define BUILD_BLADERF
+
 // Project Includes
 #include <bladerf_common.h>
+#include "bladerf_sdr.h"
 
-const std::complex<double> j = std::sqrt(std::complex<double>(-1, 0));
+
+const std::complex<double> j = std::complex<double>(0, 1);
 const double pi = 3.14159265358979;
 
 //-----------------------------------------------------------------------------
@@ -52,6 +57,38 @@ inline std::complex<T> complex_cast(const std::complex<U>& c) {
     //return { (T)(c.real()), (T)(c.imag()) };
     return std::complex<T>(std::real(c), std::imag(c));
 }
+
+
+std::unique_ptr<SDR_BASE> SDR_BASE::build()
+{
+#ifdef BUILD_BLADERF 
+    std::unique_ptr<BLADERF_SDR> bladerf_dev = BLADERF_SDR::open();
+
+    // Use sample rate if set, otherwise default to 2.4MSPS.
+
+    bladerf_dev->init_rx();
+
+    //if (config.Bladerf.sampleRate != 0) {
+    //    bladerf_dev->setSampleRate(config.Bladerf.sampleRate);
+    //}
+    //else {
+    //    bladerf_dev->setSampleRate(2400000);
+    //}
+
+    bladerf_dev->set_rx_frequency(96700000);
+    bladerf_dev->set_rx_samplerate(1000000);
+    bladerf_dev->set_rx_gain(30, BLADERF_GAIN_MANUAL);
+    bladerf_dev->set_rx_bandwidth(1000000);
+
+    //bladerf_dev->setSamplePublisher(std::move(config.Bladerf.samplePublisher));
+    return std::unique_ptr<SDR_BASE>(bladerf_dev.release());
+#endif
+
+}
+
+
+
+
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -151,6 +188,7 @@ int main(int argc, char** argv)
 
     //num_samples = buffer.size() >> 1;
 
+
     int num_devices = bladerf_get_device_list(&device_list);
 
     bladerf_num = select_bladerf(num_devices, device_list);
@@ -165,6 +203,9 @@ int main(int argc, char** argv)
 
     try{
 
+        std::unique_ptr<SDR_BASE> sdr = SDR_BASE::build();
+
+        /*
         blade_status = bladerf_open(&dev, ("*:serial=" +  std::string(device_list[bladerf_num].serial)).c_str());
         if (blade_status != 0)
         {
@@ -185,16 +226,18 @@ int main(int argc, char** argv)
         blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
-        // the gain 
-        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
-        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
-
         // configure the sync to receive/transmit data
         blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
 
         // enable the rx channel RF frontend
         blade_status = bladerf_enable_module(dev, BLADERF_RX, true);
        
+        // the gain 
+        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
+        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
+        
+        */
+
         // decimation rate
         int64_t dec_rate = (int64_t)(fs / (float)channel_bw);
 
@@ -243,7 +286,7 @@ int main(int argc, char** argv)
 
         double fft_scale = 1.0 / (double)(num_samples);
 
-        std::vector<std::complex<float>> cf_samples(num_samples);
+        //std::vector<std::complex<float>> cf_samples(num_samples);
         std::complex<float> cf_scale(scale, 0.0f);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
@@ -285,9 +328,14 @@ int main(int argc, char** argv)
 #else
 
 #endif
+        std::vector<std::complex<float>> cf_samples(num_samples);
+
+        //sdr->start(cf_samples);
+
         while(1)
         {
             
+            /*
             blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
             if (blade_status != 0)
             {
@@ -295,12 +343,15 @@ int main(int argc, char** argv)
                 return blade_status;
             }
 
-            // convert from complex int16 to complex floats, scale and frequency shift
+            //convert from complex int16 to complex floats, scale and frequency shift
             for (idx = 0; idx < num_samples; ++idx)
             {
                 cf_samples[idx] = complex_cast<float>(samples[idx]) * fc_rot[idx] * cf_scale;
             }
-            
+            */
+            sdr->start_single(cf_samples, num_samples);
+            //sdr->wait_for_samples();
+
 #ifdef USE_ARRAYFIRE
             // take the complex float vector data and put it into an af::array container 
             x2 = af::array(num_samples, (af::cfloat*)cf_samples.data());
@@ -328,7 +379,7 @@ int main(int argc, char** argv)
             x7 = (x7 * (1.0 / (af::max<float>(af::abs(x7)))));
 
             // shift to 0 to 2 and then scale by 60
-            x7 = ((x7+1) * 60).as(af::dtype::u8);
+            x7 = ((x7+1) * 40).as(af::dtype::u8);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             // place the data into the header for windows audio data
@@ -350,10 +401,13 @@ int main(int argc, char** argv)
 #endif
         }
 
-        // disable the rx channel RF frontend
-        blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
+        sdr->stop();
 
-        bladerf_close(dev);
+        
+        // disable the rx channel RF frontend
+        //blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
+
+        //bladerf_close(dev);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
         waveOutClose(hWaveOut);
