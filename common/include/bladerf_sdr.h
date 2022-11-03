@@ -105,6 +105,15 @@ public:
     }   // end of set_rx_frequency
     
     //-----------------------------------------------------------------------------
+    uint64_t get_rx_frequency() const
+    {
+        uint64_t rx_freq = 0;
+        auto blade_status = bladerf_get_frequency(dev, rx, &rx_freq);
+
+        return rx_freq;
+    }   // end of get_rx_frequency
+
+    //-----------------------------------------------------------------------------
     void set_tx_frequency(uint64_t tx_freq)
     {
         auto blade_status = bladerf_set_frequency(dev, tx, tx_freq);
@@ -117,6 +126,15 @@ public:
         }        
     }   // end of set_tx_frequency
     
+    //-----------------------------------------------------------------------------
+    uint64_t get_tx_frequency() const
+    {
+        uint64_t tx_freq = 0;
+        auto blade_status = bladerf_get_frequency(dev, tx, &tx_freq);
+
+        return tx_freq;
+    }   // end of get_tx_frequency
+
     //-----------------------------------------------------------------------------
     void set_rx_samplerate(uint64_t fs)
     {

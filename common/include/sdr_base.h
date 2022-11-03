@@ -24,8 +24,11 @@ public:
     //virtual void init();
 
     virtual uint64_t get_rx_samplerate() const = 0;
-    
     virtual uint64_t get_tx_samplerate() const = 0;
+
+    virtual uint64_t get_rx_frequency() const = 0;
+    virtual uint64_t get_tx_frequency() const = 0;
+
     
     // start the SDR collecting samples
     virtual void start(std::vector<std::complex<float>> &cf_samples) = 0;
