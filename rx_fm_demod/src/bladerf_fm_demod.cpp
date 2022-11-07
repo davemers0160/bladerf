@@ -64,16 +64,8 @@ std::unique_ptr<SDR_BASE> SDR_BASE::build()
 #ifdef BUILD_BLADERF 
     std::unique_ptr<BLADERF_SDR> bladerf_dev = BLADERF_SDR::open();
 
-    // Use sample rate if set, otherwise default to 2.4MSPS.
-
+    // initialize the 
     bladerf_dev->init_rx();
-
-    //if (config.Bladerf.sampleRate != 0) {
-    //    bladerf_dev->setSampleRate(config.Bladerf.sampleRate);
-    //}
-    //else {
-    //    bladerf_dev->setSampleRate(2400000);
-    //}
 
     bladerf_dev->set_rx_frequency(96700000);
     bladerf_dev->set_rx_samplerate(1000000);
@@ -87,9 +79,6 @@ std::unique_ptr<SDR_BASE> SDR_BASE::build()
 }
 
 
-
-
-
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -98,10 +87,10 @@ int main(int argc, char** argv)
     
     // bladeRF variable
     struct bladerf_devinfo *device_list = NULL;
-    struct bladerf_devinfo dev_info;
-    struct bladerf* dev;
+    //struct bladerf_devinfo dev_info;
+    //struct bladerf* dev;
     int bladerf_num;
-    int blade_status;
+    //int blade_status;
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
     bladerf_frequency rx_freq;
@@ -172,7 +161,7 @@ int main(int argc, char** argv)
     std::cout << std::endl << std::endl;
 
     // array fire variables
-    af::array raw_data, fft_data, raw_data2;
+    //af::array raw_data, fft_data, raw_data2;
 
     af::array x2, x3, x4, x5, x6, x7, x8;
 
@@ -189,54 +178,21 @@ int main(int argc, char** argv)
     //num_samples = buffer.size() >> 1;
 
 
-    int num_devices = bladerf_get_device_list(&device_list);
+    //int num_devices = bladerf_get_device_list(&device_list);
 
-    bladerf_num = select_bladerf(num_devices, device_list);
+    //bladerf_num = select_bladerf(num_devices, device_list);
 
-    if (bladerf_num < 0)
-    {
-        std::cout << "could not detect any bladeRF devices..." << std::endl;
-        //return 0;
-    }
+    //if (bladerf_num < 0)
+    //{
+    //    std::cout << "could not detect any bladeRF devices..." << std::endl;
+    //    //return 0;
+    //}
 
     std::cout << std::endl;
 
     try{
 
         std::unique_ptr<SDR_BASE> sdr = SDR_BASE::build();
-
-        /*
-        blade_status = bladerf_open(&dev, ("*:serial=" +  std::string(device_list[bladerf_num].serial)).c_str());
-        if (blade_status != 0)
-        {
-            std::cout << "Unable to open device: " << std::string(bladerf_strerror(blade_status)) << std::endl;
-            return blade_status;
-        }
-
-        blade_status = bladerf_get_devinfo(dev, &dev_info);
-        if (blade_status != 0)
-        {
-            std::cout << "Unable to get the device info: " << std::string(bladerf_strerror(blade_status)) << std::endl;
-            return blade_status;
-        }
-        std::cout << std::endl << dev_info << std::endl;
-
-        // set the frequency, sample_rate and bandwidth
-        blade_status = bladerf_set_frequency(dev, rx, rx_freq);
-        blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
-        blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
-
-        // configure the sync to receive/transmit data
-        blade_status = bladerf_sync_config(dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, num_buffers, buffer_size, num_transfers, timeout_ms);
-
-        // enable the rx channel RF frontend
-        blade_status = bladerf_enable_module(dev, BLADERF_RX, true);
-       
-        // the gain 
-        blade_status = bladerf_set_gain_mode(dev, rx, BLADERF_GAIN_MANUAL);
-        blade_status = bladerf_set_gain(dev, rx, rx1_gain);
-        
-        */
 
         // decimation rate
         int64_t dec_rate = (int64_t)(fs / (float)channel_bw);
@@ -248,7 +204,7 @@ int main(int argc, char** argv)
         af::array dec_seq = af::seq(0, num_samples, dec_rate);
 
         // low pass filter coefficients
-        std::vector<float> lpf = DSP::create_fir_filter(n_taps, (channel_bw / 2.0) / (float)fs, &DSP::hann_window);
+        std::vector<float> lpf = DSP::create_fir_filter<float>(n_taps, (channel_bw / 2.0) / (float)fs, &DSP::hann_window);
         // create the low pass filter from the filter coefficients
         af::array af_lpf = af::array(lpf.size(), (float*)lpf.data());
 
@@ -262,10 +218,10 @@ int main(int argc, char** argv)
         // audio decimation sequence
         af::array seq_audio = af::seq(0, dec_seq.dims(0), dec_audio);
 
-        std::vector<float> lpf_de = DSP::create_fir_filter(64, 1.0/(float)(fs_d * 75e-6), &DSP::rectangular_window);
+        std::vector<float> lpf_de = DSP::create_fir_filter<float>(64, 1.0f/(float)(fs_d * 75e-6), &DSP::rectangular_window);
         af::array af_lpf_de = af::array(lpf_de.size(), (float*)lpf_de.data());
 
-        std::vector<float> lpf_a = DSP::create_fir_filter(n_taps, (audio_freq / 2.0) / (float)fs_d, &DSP::hann_window);
+        std::vector<float> lpf_a = DSP::create_fir_filter<float>(n_taps, (audio_freq / 2.0) / (float)fs_d, &DSP::hann_window);
         af::array af_lpf_a = af::array(lpf_a.size(), (float*)lpf_a.data());
 
         // A*exp(j*3*pi*t) = A*cos(3*pi*t) + j*sin(3*pi*t)
@@ -286,7 +242,6 @@ int main(int argc, char** argv)
 
         double fft_scale = 1.0 / (double)(num_samples);
 
-        //std::vector<std::complex<float>> cf_samples(num_samples);
         std::complex<float> cf_scale(scale, 0.0f);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
@@ -311,46 +266,14 @@ int main(int argc, char** argv)
         std::cout << "fs_audio:   " << fs_audio << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
 
-#ifdef USE_ARRAYFIRE
-
-        //af::Window myWindow(800, 800, "FFT example: ArrayFire");
-        af::array X = af::seq(sp+1, (sp+sp2), 1);
-
-        af::array f = af::seq(f_min, f_max - (freq_step*1.0e-6), (freq_step*1.0e-6));
-
-        //myWindow.setAxesLimits(f_min, f_max - (freq_step * 1.0e-6), -120, -20, true);
-        //myWindow.setAxesTitles("Frequency (MHz)", "Power (dBm)");
-        //myWindow.setAxesLimits(-1.5, 1.5, -1.5, 1.5, false);
-        //myWindow.setAxesTitles("Real", "Imag");
-
-        //while (!myWindow.close())
-
-#else
-
-#endif
         std::vector<std::complex<float>> cf_samples(num_samples);
 
-        //sdr->start(cf_samples);
+        sdr->start(cf_samples);
 
         while(1)
         {
-            
-            /*
-            blade_status = bladerf_sync_rx(dev, (void*)samples.data(), num_samples, NULL, timeout_ms);
-            if (blade_status != 0)
-            {
-                std::cout << "Unable to get the required number of samples: " << std::string(bladerf_strerror(blade_status)) << std::endl;
-                return blade_status;
-            }
-
-            //convert from complex int16 to complex floats, scale and frequency shift
-            for (idx = 0; idx < num_samples; ++idx)
-            {
-                cf_samples[idx] = complex_cast<float>(samples[idx]) * fc_rot[idx] * cf_scale;
-            }
-            */
-            sdr->start_single(cf_samples, num_samples);
-            //sdr->wait_for_samples();
+            //sdr->start_single(cf_samples, num_samples);
+            sdr->wait_for_samples();
 
 #ifdef USE_ARRAYFIRE
             // take the complex float vector data and put it into an af::array container 
@@ -379,7 +302,7 @@ int main(int argc, char** argv)
             x7 = (x7 * (1.0 / (af::max<float>(af::abs(x7)))));
 
             // shift to 0 to 2 and then scale by 60
-            x7 = ((x7+1) * 40).as(af::dtype::u8);
+            x7 = ((x7+1) * 30).as(af::dtype::u8);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             // place the data into the header for windows audio data
@@ -402,12 +325,6 @@ int main(int argc, char** argv)
         }
 
         sdr->stop();
-
-        
-        // disable the rx channel RF frontend
-        //blade_status = bladerf_enable_module(dev, BLADERF_RX, false);
-
-        //bladerf_close(dev);
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
         waveOutClose(hWaveOut);
