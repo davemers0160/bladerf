@@ -17,6 +17,7 @@ public:
 
     std::mutex sdr_mtx;
     std::condition_variable sdr_cv;
+    bool processed;
 
     //   static std::unique_ptr<Source> build(const std::string& type, Config& config);
     static std::unique_ptr<SDR_BASE> build();
@@ -39,15 +40,15 @@ public:
     // stop the SDR
     virtual void stop() = 0;
     
-    void wait_for_samples()
+    virtual void wait_for_samples()
     {
         std::unique_lock<std::mutex> lck(sdr_mtx);
-        sdr_cv.wait(lck);
+        sdr_cv.wait(lck, [this] { return processed; });
+        processed = false;
     }
 
 protected:
-
-
+    //inline bool get_processed() {return processed;}
 };
 
 #endif  // _SDR_BASE_CLASS_H_

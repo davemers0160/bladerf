@@ -6,7 +6,6 @@
 #include <mutex>
 #include <condition_variable>
 
-
 // bladeRF includes
 #include <libbladeRF.h>
 #include <bladeRF2.h>
@@ -283,18 +282,21 @@ public:
                 //std::lock_guard<std::mutex> lg(sdr_mtx);
                 //sdr_mtx.lock();
                 std::unique_lock<std::mutex> lck(sdr_mtx);
+
                 // convert from complex int16 to complex floats, scale and frequency shift
                 for (idx = 0; idx < num_samples; ++idx)
                 {                   
                     cf_samples[idx] = std::complex<float>(std::real(samples[idx]), std::imag(samples[idx])) * cf_scale;
                 }
-                //sdr_mtx.unlock();
-                sdr_cv.notify_one();
+                
+                processed = true;
+                lck.unlock();
+                sdr_cv.notify_all();
             }
         }
         catch (...)
         {
-
+            std::cout << "error in collection thread" << std::endl;
         }
     }   // end of data_collection
 
@@ -302,7 +304,7 @@ public:
     void start(std::vector<std::complex<float>>& cf_samples)
     {
         collect_samples = true;
-        
+        processed = false;
         if(dev == nullptr)
         {
             exit(1);
@@ -367,7 +369,7 @@ protected:
     uint32_t num_transfers;
     
     std::thread sdr_thread;
-    
+
     //-----------------------------------------------------------------------------
     static inline int select_bladerf(int num_devices, struct bladerf_devinfo* device_list)
     {
