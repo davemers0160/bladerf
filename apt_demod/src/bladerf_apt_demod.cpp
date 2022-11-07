@@ -125,13 +125,18 @@ std::vector<T> decimate_vec(std::vector<T>& v1, double rate)
 
     double index = 0.0;
 
-    for (; res_itr != res_end; ++res_itr)
+    for (uint64_t idx = 0; idx < num; ++idx)
     {
-        std::advance(v1_itr, index);
-        *res_itr = *v1_itr;
+        res[idx] = v1[floor(index)];
         index += rate;
-
     }
+
+    //for (; res_itr != res_end; ++res_itr)
+    //{
+    //    std::advance(v1_itr, rate);
+    //    *res_itr = *v1_itr;
+    //    //index += rate;
+    //}
 
     return res;
 }   // 
@@ -266,9 +271,9 @@ int main(int argc, char** argv)
     try{
 
         // test code
-        std::vector<float> v1 = { 1,2,1,2,1,2,1,2 };
-        std::vector<float> h = { 1, -2, 1 };
-        std::vector<float> x1 = filter_vec(v1, h);
+        //std::vector<float> v1 = { 1,2,1,2,1,2,1,2 };
+        //std::vector<float> h = { 1, -2, 1 };
+        //std::vector<float> x1 = filter_vec(v1, h);
 
 
 
@@ -280,15 +285,10 @@ int main(int argc, char** argv)
         num_samples = 15 * 3600 * sample_rate;
 
         std::vector<complex<int16_t>> samples;
-        std::string filename = "../rx_record/recordings/137M800_0M624__640s_test4.bin";
+        std::string filename = "../../rx_record/recordings/137M800_0M624__640s_test4.bin";
         read_iq_data(filename, samples);
 
         num_samples = samples.size();
-        std::vector<std::complex<float>> cf_samples(num_samples);
-        for (idx = 0; idx < num_samples; ++idx)
-        {
-            cf_samples[idx] = std::complex<float>(std::real(samples[idx]), std::imag(samples[idx])) * cf_scale;
-        }
 
         //-----------------------------------------------------------------------------
         // setup all of the filters and rotations
@@ -313,15 +313,15 @@ int main(int argc, char** argv)
         std::vector<float> lpf_fm = DSP::create_fir_filter<float>(64, 1.0/(float)(decimated_sample_rate * 75e-6), &DSP::rectangular_window);
 
         // Audio low pass filter coefficients
-        std::vector<float> lpf_audio = DSP::create_fir_filter<float>(n_taps, (desired_audio_sample_rate / 2.0) / (float)decimated_sample_rate, &DSP::hann_window);
+        std::vector<float> lpf_audio = DSP::create_fir_filter<float>(n_taps, (fc_audio / 2.0) / (float)decimated_sample_rate, &DSP::hann_window);
 
         // A*exp(j*3*pi*t) = A*cos(3*pi*t) + j*sin(3*pi*t)
         // generate the frequency rotation vector to center the offset frequency 
-        std::vector<std::complex<float>> fc_rot(num_samples, 0);
-        for (idx = 0; idx < num_samples; ++idx)
-        {
-            fc_rot[idx] = std::exp(-2.0 * 1i * M_PI * (f_offset / (double)sample_rate) * (double)idx);
-        }
+        //std::vector<std::complex<float>> fc_rot(num_samples, 0);
+        //for (idx = 0; idx < num_samples; ++idx)
+        //{
+        //    fc_rot[idx] = std::exp(-2.0 * 1i * M_PI * (f_offset / (double)sample_rate) * (double)idx);
+        //}
 
         // print out the specifics
         std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
@@ -348,25 +348,46 @@ int main(int argc, char** argv)
         //cv::Mat cv_fc_rot(1, fc_rot.size(), CV_64FC2, fc_rot.data());
         //cv::Mat cv_samples(1, cf_samples.size(), CV_64FC2, cf_samples.data());
         //cv::Mat x2 = mul_cmplx(cv_samples, cv_fc_rot);
-        std::vector<complex<float>> x2 = vec_ptws_mul(cf_samples, fc_rot);
+        //std::vector<complex<float>> x2 = vec_ptws_mul(cf_samples, fc_rot);
+        std::vector<std::complex<float>> cf_samples(num_samples);
+        for (idx = 0; idx < num_samples; ++idx)
+        {
+            cf_samples[idx] = cf_scale * std::complex<float>(std::real(samples[idx]), std::imag(samples[idx])) * (complex<float>)std::exp(-2.0 * 1i * M_PI * (f_offset / (double)sample_rate) * (double)idx);
+        }
+
+        //for (idx = 0; idx < num_samples; ++idx)
+        //{
+        //    cf_samples[idx] = cf_samples[idx] * (complex<float>)std::exp(-2.0 * 1i * M_PI * (f_offset / (double)sample_rate) * (double)idx);
+        //}
+
+        samples.clear();
+
 
         // apply low pass filter to the rotated signal 
         //x3 = af::fir(af_lpf, x2);
-        std::vector<complex<float>> x3 = filter_vec(x2, lpf_rf);
-        //cv::filter2D(x2, x3, CV_64FC2, cv_lpf_rf, cv::Point(-1, -1), cv::BORDER_REFLECT_101);
+        //std::vector<complex<float>> x3 = filter_vec(cf_samples, lpf_rf);
+        cv::Mat cv_cf(1, num_samples, CV_32FC2, cf_samples.data());
+        cv::Mat cv_lpf_rf(1, lpf_rf.size(), CV_32FC1, lpf_rf.data());
+        cv::Mat cv_x3;
+        cv::filter2D(cv_cf, cv_x3, CV_64FC2, cv_lpf_rf, cv::Point(-1, -1), cv::BORDER_REFLECT_101);
+        std::vector<complex<float>> x3;
+        x3.assign(cv_x3.data, cv_x3.data + cv_x3.total() * cv_x3.channels());
+
 
         // decimate the signal
         //x4 = x3(dec_seq);
+        //std::vector<complex<float>> x4 = decimate_vec(cf_samples, rf_decimation_factor);
         std::vector<complex<float>> x4 = decimate_vec(x3, rf_decimation_factor);
 
         // polar discriminator - x4(2:end).*conj(x4(1:end - 1));
         //x5 = x4(af::seq(1, af::end, 1)) * af::conjg(x4(af::seq(0, -2, 1)));
         //x5 = af::atan2(af::imag(x5), af::real(x5)) * phasor_scale;
-        std::vector<float> x5 = polar_discriminator(x4, phasor_scale);
+        std::vector<float> x6 = polar_discriminator(x4, phasor_scale);
+        //std::vector<float> x5 = polar_discriminator(x4, phasor_scale);
 
         // run the audio through the low pass de-emphasis filter
         //x6 = af::fir(af_lpf_de, x5);
-        std::vector<float> x6 = filter_vec(x5, lpf_audio);
+        //std::vector<float> x6 = filter_vec(x5, lpf_audio);
 
         // run the audio through a second low pass filter before decimation
         //x6 = af::fir(af_lpf_a, x6);
