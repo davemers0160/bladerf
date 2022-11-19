@@ -41,10 +41,11 @@ int main(int argc, char** argv)
     bladerf_channel rx = BLADERF_CHANNEL_RX(0);
     bladerf_channel tx = BLADERF_CHANNEL_TX(0);
     bladerf_frequency rx_freq = 137000000; //162425000;
+    bladerf_frequency rx_freqa = 0;
     bladerf_sample_rate fs = 624000;
     bladerf_bandwidth rx_bw = 624000;
     bladerf_gain rx1_gain = 64;
-    int64_t span = 500000;
+    int64_t span = 624000;
 
     std::vector<int16_t> samples;
     uint32_t num_samples = 65536*2;
@@ -104,7 +105,7 @@ int main(int argc, char** argv)
 
         // set the frequency, sample_rate and bandwidth
         blade_status = bladerf_set_frequency(dev, rx, rx_freq);
-        blade_status = bladerf_get_frequency(dev, rx, &rx_freq);
+        blade_status = bladerf_get_frequency(dev, rx, &rx_freqa);
         blade_status = bladerf_set_sample_rate(dev, rx, fs, &fs);
         blade_status = bladerf_set_bandwidth(dev, rx, rx_bw, &rx_bw);
 
@@ -130,7 +131,7 @@ int main(int argc, char** argv)
         double freq_step = (fs)/(double)num_samples;
 
         double f_min = (rx_freq - (span>>1)) * 1.0e-6;
-        double f_max = (rx_freq + (span>>1)) * 1.0e-6;
+        double f_max = ((rx_freq-1) + (span>>1)) * 1.0e-6;
 
         uint32_t sp = (uint32_t)((fs - span) / (2.0 * freq_step));
         uint32_t sp2 = (uint32_t)(span / freq_step);
@@ -141,7 +142,7 @@ int main(int argc, char** argv)
         // print out the specifics
         std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
         std::cout << "fs:       " << fs << std::endl;
-        std::cout << "rx_freq:  " << rx_freq << std::endl;
+        std::cout << "rx_freq:  " << rx_freqa << std::endl;
         std::cout << "rx_bw:    " << rx_bw << std::endl;
         std::cout << "rx1_gain: " << rx1_gain << std::endl;
         std::cout << "------------------------------------------------------------------" << std::endl << std::endl;
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
 
         af::Window myWindow(800, 800, "FFT example: ArrayFire");
         //af::array X = af::seq(0, num_samples - 1, 1);
-        af::array X = af::seq(sp+1, (sp+sp2+1), 1);
+        af::array X = af::seq(sp+1, (sp+sp2), 1);
         //auto x2d = X.dims(0);
 
         //af::array f = af::seq(f_min, f_max - (freq_step * 1.0e-6), (freq_step * 1.0e-6));
@@ -189,6 +190,10 @@ int main(int argc, char** argv)
             //auto a1 = af::abs(raw_data).host<float>();
 
             fft_data = 20 * af::log10(af::shift(af::abs(raw_data), (num_samples >> 1)));
+
+            auto x_dim = X.dims();
+            auto f_dim = f.dims();
+            auto fft_dims = fft_data.dims();
 
             // show the results of the FFT in the window
             myWindow.plot(f, fft_data(X));
