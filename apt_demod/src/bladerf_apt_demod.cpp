@@ -10,9 +10,9 @@
 #endif
 
 // ArrayFire Includes
-// #ifdef USE_ARRAYFIRE
-// #include <arrayfire.h>
-// #endif
+ #ifdef USE_ARRAYFIRE
+ #include <arrayfire.h>
+ #endif
 
 #include <cstdint>
 #include <cmath>
@@ -238,15 +238,19 @@ std::vector<T> am_demod(std::vector<T>& v1, T scale)
 int main(int argc, char** argv)
 {
 
-    uint64_t idx;
+    uint64_t idx, blk_idx;
     
     uint64_t num_samples;
 
     // number of samples per second
     uint64_t sample_rate = 624000;
+    uint64_t block_size = 624000;
 
-    // number of taps to create a low pass RF filter
-    uint64_t n_taps = 100;
+
+    // number of taps to create a low pass filters
+    uint64_t rf_taps = 128;
+    uint64_t fm_taps = 64;
+    uint64_t audio_taps = 200;
 
     // offset from the center where we want to demodulate(Hz)
     int64_t f_offset = 115750;
@@ -301,7 +305,8 @@ int main(int argc, char** argv)
         float decimated_sample_rate = sample_rate / (float)rf_decimation_factor;
 
         // RF low pass filter coefficients
-        std::vector<float> lpf_rf = DSP::create_fir_filter<float>(n_taps, (desired_rf_sample_rate / 2.0) / (float)sample_rate, &DSP::hann_window);
+        std::vector<float> lpf_rf = DSP::create_fir_filter<float>(rf_taps, (desired_rf_sample_rate / 2.0) / (float)sample_rate, &DSP::hann_window);
+        af::array af_lpf_rf = af::array(lpf_rf.size(), (float*)lpf_rf.data());
 
         // find a decimation rate to achieve audio sampling rate
         int64_t audio_decimation_factor = (int64_t)(decimated_sample_rate / (float)desired_audio_sample_rate);
@@ -310,10 +315,12 @@ int main(int argc, char** argv)
         // scaling for FM demodulation
         float phasor_scale = 1 / ((2 * M_PI) / (decimated_sample_rate / desired_rf_sample_rate));
 
-        std::vector<float> lpf_fm = DSP::create_fir_filter<float>(64, 1.0/(float)(decimated_sample_rate * 75e-6), &DSP::rectangular_window);
+        std::vector<float> lpf_fm = DSP::create_fir_filter<float>(fm_taps, 1.0/(float)(decimated_sample_rate * 75e-6), &DSP::rectangular_window);
+        af::array af_lpf_fm = af::array(lpf_fm.size(), (float*)lpf_fm.data());
 
         // Audio low pass filter coefficients
-        std::vector<float> lpf_audio = DSP::create_fir_filter<float>(n_taps, (fc_audio / 2.0) / (float)decimated_sample_rate, &DSP::hann_window);
+        std::vector<float> lpf_audio = DSP::create_fir_filter<float>(audio_taps, (fc_audio / 2.0) / (float)decimated_sample_rate, &DSP::hann_window);
+        af::array af_lpf_audio = af::array(lpf_audio.size(), (float*)lpf_audio.data());
 
         // A*exp(j*3*pi*t) = A*cos(3*pi*t) + j*sin(3*pi*t)
         // generate the frequency rotation vector to center the offset frequency 
