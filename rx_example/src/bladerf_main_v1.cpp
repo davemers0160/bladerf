@@ -197,7 +197,7 @@ int main(int argc, char** argv)
 
             // show the results of the FFT in the window
             myWindow.plot(f, fft_data(X));
-            myWindow.show();
+            //myWindow.show();
 #endif
         }
 
